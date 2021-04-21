@@ -4,6 +4,7 @@ import scipy
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+from collections import Counter, OrderedDict
 
 Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
            [12, 12, 14, 19, 26, 58, 60, 55],
@@ -34,14 +35,14 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 def Cut_64Blocks(img):
-    blocks = np.zeros((row, col, 8, 8, 3),dtype = np.int16)
+    blocks = np.zeros((row_8, col_8, 8, 8, 3),dtype = np.int16)
     for i in range (row_8):
         for j in range (col_8):
             blocks[i][j] = img[i*8:(i+1)*8,j*8:(j+1)*8]
     return np.asarray(blocks)
 
 def DCTOnBlocks(blocks):
-    dctBlocks = np.zeros((row,col,8,8,3))
+    dctBlocks = np.zeros((row_8,col_8,8,8,3))
     for i in range(row_8):
         for j in range(col_8):
             dct_b = np.zeros((8,8,3))
@@ -55,7 +56,7 @@ blocks = Cut_64Blocks(ycbcr)
 print(blocks[0][0][:,:,1])
 dctBlocks = DCTOnBlocks(blocks)
 
-qDctBlocks = (dctBlocks/Y_table).round().astype(np.int16)
+qDctBlocks = (dctBlocks[:,:,:,:,1]/Y_table).round().astype(np.int16)
 ################################################
 def zigZag(block):
   lines=[[] for i in range(8+8-1)] 
@@ -67,5 +68,77 @@ def zigZag(block):
       else:  
           lines[i].append(block[y][x]) 
   return np.asarray([coefficient for line in lines for coefficient in line])
-print(qDctBlocks[0][0][:,:,0])
-zigZag(qDctBlocks[0][0][:,:,0])
+print(qDctBlocks[0][0])
+testZigzag_00 = zigZag(qDctBlocks[0][0])
+
+def TruncateEndZeros(zigzagAC):
+    index = len(zigzagAC) - 1
+    truncated = []
+    while index >= 0:
+        if zigzagAC[index] != 0:
+            # print("FOUND: ",index)
+            break
+        index -= 1
+    for i in range(index+1):
+        truncated.append(zigzagAC[i])
+    return truncated
+
+# testTrun = TruncateEndZeros(zigZag(qDctBlocks[0][3]))
+# print("Truncated :",testTrun)
+
+def CollectSymbols(qDctBlocks):
+    symbols = []
+    for i in range(row_8):
+        for j in range(col_8):
+            symbols += TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
+    return symbols
+
+symbols = CollectSymbols(qDctBlocks)
+# print(symbols)
+print("MIN",min(symbols))
+def NormalizeSymbols(symbols):
+    return [s-min(symbols) for s in symbols]
+
+def CalculateProbabilities(symbols):
+    counts = dict(Counter(NormalizeSymbols(symbols)))
+    probDict = dict(sorted(counts.items(), key=lambda item: item[1]))
+    for key in probDict:
+        probDict[key] /= float(len(symbols))
+    return probDict
+
+probDict = CalculateProbabilities(symbols)
+print(probDict)
+print(sum(probDict.values()))
+
+def HuffmanEncoding(p):
+    '''Return a Huffman code for an ensemble with distribution p.'''
+    # assert(sum(p.values()) == 1.0) # Ensure probabilities sum to 1
+    print(sum(p.values()))
+    print(p)
+
+    # Base case of only two symbols, assign 0 or 1 arbitrarily
+    if(len(p) == 2):
+        return dict(zip(p.keys(), ['0', '1']))
+
+    # Create a new distribution by merging lowest prob. pair
+    p_prime = p.copy()
+    a1, a2 = lowest_prob_pair(p)
+    p1, p2 = p_prime.pop(a1), p_prime.pop(a2)
+    p_prime[a1 + a2] = p1 + p2
+    
+
+    # Recurse and construct code on new distribution
+    c = HuffmanEncoding(p_prime)
+    ca1a2 = c.pop(a1 + a2)
+    c[a1], c[a2] = ca1a2 + '0', ca1a2 + '1'
+
+    return c
+
+def lowest_prob_pair(p):
+    '''Return pair of symbols from distribution p with lowest probabilities.'''
+    assert(len(p) >= 2) # Ensure there are at least 2 symbols in the dist.
+
+    sorted_p = sorted(p.items(), key=lambda item: item[1])
+    return sorted_p[0][0], sorted_p[1][0]
+
+print(HuffmanEncoding(probDict))

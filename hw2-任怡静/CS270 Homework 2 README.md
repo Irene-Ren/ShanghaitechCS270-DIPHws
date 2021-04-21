@@ -4,7 +4,14 @@
 
 #### Question 1
 
-- **Remember to install scipy as version 1.4.1**
+- Open `Q1_1.py` in the `Codes` folder
+- **Environment**: Python 3.7
+- **Packages**: 
+  - OpenCv, install by using `pip install opencv-python`
+  - Collections: install by using `pip install collection`
+  - Scipy: **Remember to install scipy as version 1.4.1**, uninstall newer version then use `pip install scipy==1.4.1`
+- Run code `python stitch_images.py <NAME_OF_PIC_1> <NAME_OF_PIC_2>`
+  - example: `python stitch_images.py "Homework1_images\q2\mc1\1.png"  "Homework1_images\q2\mc1\2.png"` to see picture result in **mc1**
 
 #### Question 2
 
