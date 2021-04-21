@@ -96,11 +96,11 @@ def CollectSymbols(qDctBlocks):
 symbols = CollectSymbols(qDctBlocks)
 # print(symbols)
 print("MIN",min(symbols))
-def NormalizeSymbols(symbols):
-    return [s-min(symbols) for s in symbols]
+min_symbols = min(symbols) - 1 if min(symbols) < 0 else min(symbols) + 1
+print(min_symbols)
 
 def CalculateProbabilities(symbols):
-    counts = dict(Counter(NormalizeSymbols(symbols)))
+    counts = dict(Counter([str(s) for s in symbols]))
     probDict = dict(sorted(counts.items(), key=lambda item: item[1]))
     for key in probDict:
         probDict[key] /= float(len(symbols))
@@ -108,13 +108,13 @@ def CalculateProbabilities(symbols):
 
 probDict = CalculateProbabilities(symbols)
 print(probDict)
+print(len(probDict))
 print(sum(probDict.values()))
 
-def HuffmanEncoding(p):
+def GenHuffmanDict(p):
     '''Return a Huffman code for an ensemble with distribution p.'''
-    # assert(sum(p.values()) == 1.0) # Ensure probabilities sum to 1
-    print(sum(p.values()))
-    print(p)
+    # print(sum(p.values()))
+    # print(p)
 
     # Base case of only two symbols, assign 0 or 1 arbitrarily
     if(len(p) == 2):
@@ -128,7 +128,7 @@ def HuffmanEncoding(p):
     
 
     # Recurse and construct code on new distribution
-    c = HuffmanEncoding(p_prime)
+    c = GenHuffmanDict(p_prime)
     ca1a2 = c.pop(a1 + a2)
     c[a1], c[a2] = ca1a2 + '0', ca1a2 + '1'
 
@@ -141,4 +141,7 @@ def lowest_prob_pair(p):
     sorted_p = sorted(p.items(), key=lambda item: item[1])
     return sorted_p[0][0], sorted_p[1][0]
 
-print(HuffmanEncoding(probDict))
+huffmanCodeDict = GenHuffmanDict(probDict)
+print(huffmanCodeDict)
+print(len(huffmanCodeDict))
+
