@@ -145,3 +145,19 @@ huffmanCodeDict = GenHuffmanDict(probDict)
 print(huffmanCodeDict)
 print(len(huffmanCodeDict))
 
+def HuffmanEncode(huffmanCodeDict, qDctBlocks):
+    EndCode = '000000' 
+    #TODO: NEED to determine one that is unique, also the DC part need some considerations
+    codeWords = ''
+    for i in range(row_8):
+        for j in range(col_8):
+            dc = zigZag(qDctBlocks[i][j])[0]
+            tmp = TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
+            code = ''
+            for t in tmp:
+                code += huffmanCodeDict[str(t)]
+            codeWords += '{0:08b}'.format(dc) + code + EndCode
+    return codeWords
+
+huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks)
+print(huffmanEncodeMatrix)
