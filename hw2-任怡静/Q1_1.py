@@ -3,7 +3,7 @@ from scipy.fftpack import dct, idct
 import scipy
 import numpy as np
 import os
-import matplotlib.pyplot as plt
+import math
 from collections import Counter, OrderedDict
 
 Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
@@ -158,6 +158,19 @@ def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode):
     return codeWords
 
 huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks, huffmanCodeDict['E'])
+def runLength2bytes(code):
+    return bytes([len(code)%8]+[int(code[i:i+8],2) for i in range(0, len(code), 8)])
+
+f = open("code_binary.txt", "w")
+f.write(huffmanEncodeMatrix)
+f.close()
+
+code_in_bytes = runLength2bytes(huffmanEncodeMatrix)
+
+f = open("code.txt", "wb")
+f.write(code_in_bytes)
+f.close()
+
 # print(huffmanEncodeMatrix)
 
 def DCDecode(dc_text):
@@ -240,7 +253,6 @@ def dezigzag(List):
 #                 if tmp[s,t] != dct[s,t]:
 #                     print("ERROR at " + str((i,j)))
 
-
 def RebuildBlocks(dcDecodeList, acDecodeList):
     blocks = np.zeros((row_8,col_8,8,8))
     for i in range(row_8):
@@ -266,13 +278,29 @@ def RebuildPicture(rebuiltBlocks, YCbCrlayers):
     img[:,:,2] = YCbCrlayers[:,:,2]
     return img
 
-recoverd = RebuildPicture(rebuiltBlocks, ycbcr).astype(np.uint8)
+recovered = RebuildPicture(rebuiltBlocks, ycbcr).astype(np.uint8)
 
-cv2.imshow("recoverd YCbCr",recoverd)
+cv2.imshow("recovered YCbCr",recovered)
 cv2.waitKey(0)
 
 # test code to see if the image converting to YCRCB is broken
-bgr = cv2.cvtColor(recoverd, cv2.COLOR_YCrCb2BGR)
+bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
 cv2.imshow("Restored RGB Image",bgr)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+
+
+ratio = (os.stat('hw2_files\Q1\lena.tiff').st_size) / len(code_in_bytes)
+print("The compression ratio is: %.3f : 1"%ratio)
+
+def RootMeanSquareError(originImg, recoveredImg):
+    row,col = originImg.shape
+    sum = np.sum(np.square(originImg - recoveredImg)) / (row * col)
+    return math.sqrt(sum)
+
+RMSE = RootMeanSquareError(ycbcr[:,:,0].astype(np.uint8), recovered[:,:,0])
+print("The root mean square error is: %.3f"%RMSE)
+# testarray = np.asarray([[1,2,3],[2,3,4],[3,4,5]])
+# ts = np.square(testarray)
+# print(ts)
+# print(np.sum(ts))
