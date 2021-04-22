@@ -21,18 +21,18 @@ print("row: ",row, "col: ",col)
 
 row_8,col_8 =row//8,col//8
 
-cv2.imshow("Original Image",img)
-cv2.waitKey(0)
+# cv2.imshow("Original Image",img)
+# cv2.waitKey(0)
 
 ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
-cv2.waitKey(0)
+# cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
+# cv2.waitKey(0)
 
 # test code to see if the image converting to YCRCB is broken
 bgr = cv2.cvtColor(ycbcr, cv2.COLOR_YCrCb2BGR)
-cv2.imshow("Restored RGB Image",bgr)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.imshow("Restored RGB Image",bgr)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 
 def Cut_64Blocks(img):
     blocks = np.zeros((row_8, col_8, 8, 8, 3),dtype = np.int16)
@@ -90,17 +90,16 @@ def CollectSymbols(qDctBlocks):
     symbols = []
     for i in range(row_8):
         for j in range(col_8):
-            symbols += TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
+            subSym = TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
+            symbols += [str(s) for s in subSym]
+            symbols += "E"
     return symbols
 
 symbols = CollectSymbols(qDctBlocks)
 # print(symbols)
-print("MIN",min(symbols))
-min_symbols = min(symbols) - 1 if min(symbols) < 0 else min(symbols) + 1
-print(min_symbols)
 
 def CalculateProbabilities(symbols):
-    counts = dict(Counter([str(s) for s in symbols]))
+    counts = dict(Counter(symbols))
     probDict = dict(sorted(counts.items(), key=lambda item: item[1]))
     for key in probDict:
         probDict[key] /= float(len(symbols))
@@ -145,19 +144,84 @@ huffmanCodeDict = GenHuffmanDict(probDict)
 print(huffmanCodeDict)
 print(len(huffmanCodeDict))
 
-def HuffmanEncode(huffmanCodeDict, qDctBlocks):
-    EndCode = '000000' 
+def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode): 
     #TODO: NEED to determine one that is unique, also the DC part need some considerations
     codeWords = ''
+    code_dc = ''
+    
     for i in range(row_8):
         for j in range(col_8):
             dc = zigZag(qDctBlocks[i][j])[0]
+            code_dc += '{0:08b}'.format(dc)
             tmp = TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
             code = ''
             for t in tmp:
                 code += huffmanCodeDict[str(t)]
-            codeWords += '{0:08b}'.format(dc) + code + EndCode
+            codeWords += code + endCode
+        codeWords = code_dc+codeWords
     return codeWords
 
-huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks)
-print(huffmanEncodeMatrix)
+huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks, huffmanCodeDict['E'])
+# print(huffmanEncodeMatrix)
+
+def DCDecode(dc_text):
+    decoded_text_dc = ""
+    for i in range(len(dc_text)//8):
+        character = int('0b'+dc_text[i*8:(i+1)*8],2)
+        decoded_text_dc += str(character) + ' '
+    return decoded_text_dc
+
+
+
+def huffmanDecode (dictionary, ac_text):
+    huffmanDecodeDict = {v: k for k, v in dictionary.items()}
+    print(huffmanDecodeDict)
+    current_code = ""
+    decoded_text = ""
+
+    counter = 0
+    for bit in ac_text:
+        current_code += bit
+        if(current_code in huffmanDecodeDict):
+            if huffmanDecodeDict[current_code] == 'E':
+                zero_len = 63 - counter
+                print(zero_len)
+                for i in range(zero_len):
+                    decoded_text += '0 '
+                decoded_text += "\n"
+                counter = 0
+                current_code = ""
+            else:
+                character = huffmanDecodeDict[current_code]
+                decoded_text += character + ' '
+                current_code = ""
+                counter += 1
+
+    return decoded_text
+
+
+dcDecodetest = DCDecode(huffmanEncodeMatrix[0:8*64])
+# print (dcDecodetest)
+
+huffmanDecodetest = huffmanDecode(huffmanCodeDict,huffmanEncodeMatrix[8*64:])
+# print(huffmanDecodetest)
+
+gaps=[i for i in range(1,8)]+[8-i for i in range(8)]+[-1]
+locations=[[int(sum(range(gaps[i-1]+1))),sum(range(gaps[i]+1))] if gaps[i]>gaps[i-1]  else [64-sum(range(gaps[i-1])),64-sum(range(gaps[i]))] for i in range(len(gaps)-1)]
+
+def deZigZag(dc, zigZagArr):
+    zigZagArr=[zigZagArr[l[0]:l[1]] for l in locations]
+    block=np.zeros((8,8),dtype=int16)
+    for y in range(8): 
+        for x in range(8):
+            if x == 0 and y == 0:
+                block[y][x] = dc
+            else:
+                i=y+x 
+                if(i%2 != 0): 
+                    block[y][x]=zigZagArr[i][0]
+                    zigZagArr[i]=zigZagArr[i][1:]
+                else: 
+                    block[y][x]=zigZagArr[i][-1:][0]
+                    zigZagArr[i]=zigZagArr[i][:-1]
+    return block
