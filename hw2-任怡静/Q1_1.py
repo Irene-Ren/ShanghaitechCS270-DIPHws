@@ -17,16 +17,14 @@ Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
 # read the image and determine the row,col of the image (512x512)
 img = cv2.imread("hw2_files\Q1\lena.tiff")
 row, col, _ = img.shape
-print("row: ",row, "col: ",col)
-
 row_8,col_8 =row//8,col//8
 
-# cv2.imshow("Original Image",img)
-# cv2.waitKey(0)
+cv2.imshow("Original Image",img)
+cv2.waitKey(0)
 
 ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
-cv2.waitKey(0)
+# cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
+# cv2.waitKey(0)
 
 def Cut_Y64Blocks(yChannel):
     blocks = np.zeros((row_8, col_8, 8, 8),dtype = np.int16)
@@ -182,7 +180,7 @@ def DCDecode(dc_text):
 
 def huffmanDecode (dictionary, ac_text):
     huffmanDecodeDict = {v: k for k, v in dictionary.items()}
-    print(huffmanDecodeDict)
+    # print(huffmanDecodeDict)
     current_code = ""
     decode_block = []
     decode_all = []
@@ -280,12 +278,12 @@ def RebuildPicture(rebuiltBlocks, YCbCrlayers):
 
 recovered = RebuildPicture(rebuiltBlocks, ycbcr).astype(np.uint8)
 
-cv2.imshow("recovered YCbCr",recovered)
-cv2.waitKey(0)
+# cv2.imshow("recovered YCbCr",recovered)
+# cv2.waitKey(0)
 
 # test code to see if the image converting to YCRCB is broken
 bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
-cv2.imshow("Restored RGB Image",bgr)
+cv2.imshow("Recovered RGB Image",bgr)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
