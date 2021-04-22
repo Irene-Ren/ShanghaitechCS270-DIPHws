@@ -231,9 +231,17 @@ def dezigzag(List):
                     matrix[x,i-x] = List[index]
                     index = index +1
     return matrix
-array = huffmanDecodetest[0]
-array.insert(0,dcDecodetest[0])
+array = [dcDecodetest[0]] + huffmanDecodetest[0]
 print(array)
 testblock = dezigzag(array)
 print(testblock)
 print(qDctBlocks[0,0])
+
+def RebuildBlocks(dcDecodeList, acDecodeList):
+    blocks = np.zeros(row_8,col_8,8,8)
+    for i in range(row_8):
+        for j in range(col_8):
+            zigzag = [dcDecodeList[i+j]] + acDecodeList[i+j]
+            blocks[i][j] = dezigzag(zigzag) * Y_table
+    return blocks
+
