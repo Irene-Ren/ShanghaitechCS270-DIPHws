@@ -53,23 +53,22 @@ def DCTOnBlocks(blocks):
     return dctBlocks
 
 blocks = Cut_64Blocks(ycbcr)
-print(blocks[0][0][:,:,1])
 dctBlocks = DCTOnBlocks(blocks)
 
 qDctBlocks = (dctBlocks[:,:,:,:,1]/Y_table).round().astype(np.int16)
 ################################################
 def zigZag(block):
-  lines=[[] for i in range(8+8-1)] 
-  for y in range(8): 
-    for x in range(8): 
-      i=y+x 
-      if(i%2 ==0): 
-          lines[i].insert(0,block[y][x]) 
-      else:  
-          lines[i].append(block[y][x]) 
-  return np.asarray([coefficient for line in lines for coefficient in line])
-print(qDctBlocks[0][0])
-testZigzag_00 = zigZag(qDctBlocks[0][0])
+    lines=[[] for i in range(8+8-1)] 
+    for y in range(8): 
+        for x in range(8): 
+            i=y+x 
+            if(i%2 ==0): 
+                lines[i].insert(0,block[y][x]) 
+            else:  
+                lines[i].append(block[y][x]) 
+    # print(lines)
+    return np.asarray([coefficient for line in lines for coefficient in line])
+
 
 def TruncateEndZeros(zigzagAC):
     index = len(zigzagAC) - 1
@@ -83,8 +82,8 @@ def TruncateEndZeros(zigzagAC):
         truncated.append(zigzagAC[i])
     return truncated
 
-# testTrun = TruncateEndZeros(zigZag(qDctBlocks[0][3]))
-# print("Truncated :",testTrun)
+testTrun = TruncateEndZeros(zigZag(qDctBlocks[0][0]))
+print("Truncated :",testTrun)
 
 def CollectSymbols(qDctBlocks):
     symbols = []
@@ -106,9 +105,9 @@ def CalculateProbabilities(symbols):
     return probDict
 
 probDict = CalculateProbabilities(symbols)
-print(probDict)
-print(len(probDict))
-print(sum(probDict.values()))
+# print(probDict)
+# print(len(probDict))
+# print(sum(probDict.values()))
 
 def GenHuffmanDict(p):
     '''Return a Huffman code for an ensemble with distribution p.'''
@@ -141,8 +140,8 @@ def lowest_prob_pair(p):
     return sorted_p[0][0], sorted_p[1][0]
 
 huffmanCodeDict = GenHuffmanDict(probDict)
-print(huffmanCodeDict)
-print(len(huffmanCodeDict))
+# print(huffmanCodeDict)
+# print(len(huffmanCodeDict))
 
 def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode): 
     #TODO: NEED to determine one that is unique, also the DC part need some considerations
@@ -151,24 +150,29 @@ def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode):
     
     for i in range(row_8):
         for j in range(col_8):
-            dc = zigZag(qDctBlocks[i][j])[0]
+            tmp = TruncateEndZeros(zigZag(qDctBlocks[i][j]))
+            # print(tmp)
+            dc = tmp.pop(0)
+            # print(tmp)
+
             code_dc += '{0:08b}'.format(dc)
-            tmp = TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
+            
             code = ''
             for t in tmp:
+                # print(t)
                 code += huffmanCodeDict[str(t)]
             codeWords += code + endCode
-        codeWords = code_dc+codeWords
+    codeWords = code_dc+codeWords
     return codeWords
 
 huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks, huffmanCodeDict['E'])
 # print(huffmanEncodeMatrix)
 
 def DCDecode(dc_text):
-    decoded_text_dc = ""
+    decoded_text_dc = []
     for i in range(len(dc_text)//8):
         character = int('0b'+dc_text[i*8:(i+1)*8],2)
-        decoded_text_dc += str(character) + ' '
+        decoded_text_dc.append(character)
     return decoded_text_dc
 
 
@@ -177,51 +181,59 @@ def huffmanDecode (dictionary, ac_text):
     huffmanDecodeDict = {v: k for k, v in dictionary.items()}
     print(huffmanDecodeDict)
     current_code = ""
-    decoded_text = ""
-
+    decode_block = []
+    decode_all = []
+    
     counter = 0
     for bit in ac_text:
         current_code += bit
         if(current_code in huffmanDecodeDict):
             if huffmanDecodeDict[current_code] == 'E':
                 zero_len = 63 - counter
-                print(zero_len)
+                assert(zero_len <= 63)
                 for i in range(zero_len):
-                    decoded_text += '0 '
-                decoded_text += "\n"
+                    decode_block.append(0)
                 counter = 0
                 current_code = ""
+                decode_all.append(decode_block)
+                decode_block = []
             else:
                 character = huffmanDecodeDict[current_code]
-                decoded_text += character + ' '
+                # print(character)
+                decode_block.append(int(character))
                 current_code = ""
                 counter += 1
 
-    return decoded_text
+    return decode_all
 
-
-dcDecodetest = DCDecode(huffmanEncodeMatrix[0:8*64])
+dcDecodetest = DCDecode(huffmanEncodeMatrix[0:8*64*64])
 # print (dcDecodetest)
 
-huffmanDecodetest = huffmanDecode(huffmanCodeDict,huffmanEncodeMatrix[8*64:])
+huffmanDecodetest = huffmanDecode(huffmanCodeDict,huffmanEncodeMatrix[8*64*64:])
 # print(huffmanDecodetest)
+print(huffmanDecodetest[0])
 
-gaps=[i for i in range(1,8)]+[8-i for i in range(8)]+[-1]
-locations=[[int(sum(range(gaps[i-1]+1))),sum(range(gaps[i]+1))] if gaps[i]>gaps[i-1]  else [64-sum(range(gaps[i-1])),64-sum(range(gaps[i]))] for i in range(len(gaps)-1)]
-
-def deZigZag(dc, zigZagArr):
-    zigZagArr=[zigZagArr[l[0]:l[1]] for l in locations]
-    block=np.zeros((8,8),dtype=int16)
-    for y in range(8): 
-        for x in range(8):
-            if x == 0 and y == 0:
-                block[y][x] = dc
-            else:
-                i=y+x 
-                if(i%2 != 0): 
-                    block[y][x]=zigZagArr[i][0]
-                    zigZagArr[i]=zigZagArr[i][1:]
-                else: 
-                    block[y][x]=zigZagArr[i][-1:][0]
-                    zigZagArr[i]=zigZagArr[i][:-1]
-    return block
+def dezigzag(List):
+    n = int((len(List))**0.5)
+    matrix = np.zeros([n,n],dtype=np.int16)
+    index = 0
+    for i in range(2*(n-1)): #Sum of row idx and columnx
+        if i%2 ==0:
+            for x in range(i,-1,-1): #逆序
+                if (x <= n-1) and (i-x <= n-1):
+                    #print("i=",i,x,i-x)
+                    matrix[x,i-x] = List[index]
+                    index=index + 1
+        else:
+            for x in range(0,i+1):
+                if (x <= n-1) and (i-x <= n-1):
+                    #print("i=",i,x,i-x)
+                    matrix[x,i-x] = List[index]
+                    index = index +1
+    return matrix
+array = huffmanDecodetest[0]
+array.insert(0,dcDecodetest[0])
+print(array)
+testblock = dezigzag(array)
+print(testblock)
+print(qDctBlocks[0,0])
