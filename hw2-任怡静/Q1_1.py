@@ -25,37 +25,30 @@ row_8,col_8 =row//8,col//8
 # cv2.waitKey(0)
 
 ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-# cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
-# cv2.waitKey(0)
+cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
+cv2.waitKey(0)
 
-# test code to see if the image converting to YCRCB is broken
-bgr = cv2.cvtColor(ycbcr, cv2.COLOR_YCrCb2BGR)
-# cv2.imshow("Restored RGB Image",bgr)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
-def Cut_64Blocks(img):
-    blocks = np.zeros((row_8, col_8, 8, 8, 3),dtype = np.int16)
+def Cut_Y64Blocks(yChannel):
+    blocks = np.zeros((row_8, col_8, 8, 8),dtype = np.int16)
     for i in range (row_8):
         for j in range (col_8):
-            blocks[i][j] = img[i*8:(i+1)*8,j*8:(j+1)*8]
+            blocks[i][j] = yChannel[i*8:(i+1)*8,j*8:(j+1)*8]
     return np.asarray(blocks)
 
 def DCTOnBlocks(blocks):
-    dctBlocks = np.zeros((row_8,col_8,8,8,3))
+    dctBlocks = np.zeros((row_8,col_8,8,8))
     for i in range(row_8):
         for j in range(col_8):
-            dct_b = np.zeros((8,8,3))
-            for alpha in range(3):
-               b = blocks[i][j][:,:,alpha]
-               dct_b[:,:,alpha] = dct(dct(b.T, norm = 'ortho').T,norm = 'ortho')
+            dct_b = np.zeros((8,8))
+            b = blocks[i][j][:,:]
+            dct_b[:,:] = dct(dct(b.T, norm = 'ortho').T,norm = 'ortho')
             dctBlocks[i][j] = dct_b
     return dctBlocks
 
-blocks = Cut_64Blocks(ycbcr)
+blocks = Cut_Y64Blocks(ycbcr[:,:,0])
 dctBlocks = DCTOnBlocks(blocks)
 
-qDctBlocks = (dctBlocks[:,:,:,:,1]/Y_table).round().astype(np.int16)
+qDctBlocks = (dctBlocks/Y_table).round().astype(np.int16)
 ################################################
 def zigZag(block):
     lines=[[] for i in range(8+8-1)] 
@@ -82,8 +75,8 @@ def TruncateEndZeros(zigzagAC):
         truncated.append(zigzagAC[i])
     return truncated
 
-testTrun = TruncateEndZeros(zigZag(qDctBlocks[0][0]))
-print("Truncated :",testTrun)
+# testTrun = TruncateEndZeros(zigZag(qDctBlocks[0][0]))
+# print("Truncated :",testTrun)
 
 def CollectSymbols(qDctBlocks):
     symbols = []
@@ -123,7 +116,6 @@ def GenHuffmanDict(p):
     a1, a2 = lowest_prob_pair(p)
     p1, p2 = p_prime.pop(a1), p_prime.pop(a2)
     p_prime[a1 + a2] = p1 + p2
-    
 
     # Recurse and construct code on new distribution
     c = GenHuffmanDict(p_prime)
@@ -175,8 +167,6 @@ def DCDecode(dc_text):
         decoded_text_dc.append(character)
     return decoded_text_dc
 
-
-
 def huffmanDecode (dictionary, ac_text):
     huffmanDecodeDict = {v: k for k, v in dictionary.items()}
     print(huffmanDecodeDict)
@@ -211,7 +201,7 @@ dcDecodetest = DCDecode(huffmanEncodeMatrix[0:8*64*64])
 
 huffmanDecodetest = huffmanDecode(huffmanCodeDict,huffmanEncodeMatrix[8*64*64:])
 # print(huffmanDecodetest)
-print(huffmanDecodetest[0])
+# print(huffmanDecodetest[0])
 
 def dezigzag(List):
     n = int((len(List))**0.5)
@@ -231,17 +221,58 @@ def dezigzag(List):
                     matrix[x,i-x] = List[index]
                     index = index +1
     return matrix
-array = [dcDecodetest[0]] + huffmanDecodetest[0]
-print(array)
-testblock = dezigzag(array)
-print(testblock)
-print(qDctBlocks[0,0])
+# array = [dcDecodetest[0]] + huffmanDecodetest[0]
+# print(array)
+# testblock = dezigzag(array)
+# print(testblock)
+# print(qDctBlocks[0,0])
+# print(type(testblock))
+# print(type(qDctBlocks[0,0]))
+
+# for i in range(row_8):
+#     for j in range(col_8):
+#         # print(dcDecodeList[i+j],acDecodeList[i+j])
+#         zigzag = [dcDecodetest[i*row_8+j]] + huffmanDecodetest[i*row_8+j]
+#         tmp = dezigzag(zigzag)
+#         dct = qDctBlocks[i,j]
+#         for s in range(8):
+#             for t in range(8):
+#                 if tmp[s,t] != dct[s,t]:
+#                     print("ERROR at " + str((i,j)))
+
 
 def RebuildBlocks(dcDecodeList, acDecodeList):
-    blocks = np.zeros(row_8,col_8,8,8)
+    blocks = np.zeros((row_8,col_8,8,8))
     for i in range(row_8):
         for j in range(col_8):
-            zigzag = [dcDecodeList[i+j]] + acDecodeList[i+j]
-            blocks[i][j] = dezigzag(zigzag) * Y_table
+            # print(dcDecodeList[i+j],acDecodeList[i+j])
+            zigzag = [dcDecodeList[i*row_8+j]] + acDecodeList[i*row_8+j]
+            dct_b = dezigzag(zigzag) * Y_table
+            blocks[i][j] = idct(idct(dct_b.T,norm = 'ortho').T,norm = 'ortho')
     return blocks
 
+rebuiltBlocks = RebuildBlocks(dcDecodetest, huffmanDecodetest)
+
+
+
+def RebuildPicture(rebuiltBlocks, YCbCrlayers):
+    row = row_8 * 8
+    col = col_8 * 8
+    img = np.zeros((row,col,3))
+    for i in range(row_8):
+        for j in range(col_8):
+            img[i*8:(i+1)*8,j*8:(j+1)*8,0] = rebuiltBlocks[i,j]
+    img[:,:,1] = YCbCrlayers[:,:,1]
+    img[:,:,2] = YCbCrlayers[:,:,2]
+    return img
+
+recoverd = RebuildPicture(rebuiltBlocks, ycbcr).astype(np.uint8)
+
+cv2.imshow("recoverd YCbCr",recoverd)
+cv2.waitKey(0)
+
+# test code to see if the image converting to YCRCB is broken
+bgr = cv2.cvtColor(recoverd, cv2.COLOR_YCrCb2BGR)
+cv2.imshow("Restored RGB Image",bgr)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
