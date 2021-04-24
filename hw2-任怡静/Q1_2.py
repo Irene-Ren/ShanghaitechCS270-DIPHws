@@ -76,7 +76,7 @@ def EncodeWatermark(originImg, watermark, alpha):
 # print(encryptedImg)
 # print(positionDict)
 
-encryptedImg, positionDict = EncodeWatermark(ycbcr, watermark,0.25)
+encryptedImg, positionDict = EncodeWatermark(ycbcr, watermark,0.2)
 print(encryptedImg.shape)
 
 
@@ -102,8 +102,9 @@ def DecodeWatermark(originImg, encryptedImg,kLargestIndices,wrow,wcol,alpha):
         # print("watermark index",k//wrow,k%wcol)
         watermark[k//wcol][k%wcol] = (encryptDCT[kvalue//col][kvalue%col] / oriDCT[kvalue//col][kvalue%col] - 1) / alpha
     return watermark
-
-extractedWM = DecodeWatermark(ycbcr,encryptedImg,positionDict,wrow,wcol,0.25)
+# img = cv2.imread("DecompressedImage.tiff")
+# ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+extractedWM = DecodeWatermark(ycbcr,encryptedImg,positionDict,wrow,wcol,0.2)
 for i in range(extractedWM.shape[0]):
     for j in range(extractedWM.shape[1]):
         extractedWM[i,j] *= 255

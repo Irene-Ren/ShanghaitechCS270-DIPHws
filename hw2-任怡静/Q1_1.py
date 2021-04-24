@@ -16,6 +16,7 @@ Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
            [72, 92, 95, 98, 112, 100, 103, 99]]
 # read the image and determine the row,col of the image (512x512)
 img = cv2.imread("hw2_files\Q1\lena.tiff")
+# img = cv2.imread("EncryptedImage.tiff")
 row, col, _ = img.shape
 row_8,col_8 =row//8,col//8
 
@@ -284,11 +285,13 @@ recovered = RebuildPicture(rebuiltBlocks, ycbcr).astype(np.uint8)
 # test code to see if the image converting to YCRCB is broken
 bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
 cv2.imshow("Recovered RGB Image",bgr)
+# cv2.imwrite("DecompressedImage.tiff",bgr)
+
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-
 ratio = (os.stat('hw2_files\Q1\lena.tiff').st_size) / len(code_in_bytes)
+# ratio = (os.stat('EncryptedImage.tiff').st_size) / len(code_in_bytes)
 print("The compression ratio is: %.3f : 1"%ratio)
 
 def RootMeanSquareError(originImg, recoveredImg):
