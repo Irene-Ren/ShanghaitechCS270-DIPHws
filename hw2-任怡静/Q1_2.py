@@ -7,6 +7,11 @@ img = cv2.imread("hw2_files\Q1\lena.tiff")
 watermarkData = loadmat("hw2_files\Q1\LOGO_CS270.mat")
 
 watermark = watermarkData["LOGO_CS270"]
+cv2.imshow("watermark",watermark.astype(np.uint8))
+cv2.waitKey(0)
+for i in range(watermark.shape[0]):
+    for j in range(watermark.shape[1]):
+        watermark[i, j] /= 255
 
 ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
 row, col, _ = img.shape
@@ -23,57 +28,86 @@ row, col, _ = img.shape
 # recovered[:,:] = idct(idct(oriDCT.T,norm = 'ortho').T,norm = 'ortho')
 # cv2.imshow("Recovered",recovered.astype(np.uint8))
 wrow, wcol = watermark.shape
-print("You are to expect finding", wrow*wcol, "numbers, PLEASE BE PATIENT,press any key to start")
-cv2.imshow("watermark",watermark.astype(np.uint8))
-cv2.waitKey(0)
-cv2.destroyAllWindows()
 
-def EncodeWatermark(origin, watermark, alpha):
-    row, col = origin.shape
-    print(row,col)
+
+def EncodeWatermark(originImg, watermark, alpha):
+    row, col, _ = originImg.shape
+    yChannel = originImg[:,:,0]
+    # print(row,col)
     wrow,wcol = watermark.shape
-    print(wrow,wcol)
+    # print(wrow,wcol)
 
     oriDCT = np.zeros((row,col))
-    oriDCT[:,:] = dct(dct(origin.T, norm = 'ortho').T,norm = 'ortho')
+    oriDCT[:,:] = dct(dct(yChannel.T, norm = 'ortho').T,norm = 'ortho')
 
-    oriDCT = origin # test code
+    # oriDCT = yChannel # test code
 
     acDCTlist = oriDCT.flatten()[1:]
-    kLargest = list(acDCTlist[np.argsort(acDCTlist,axis=None)])[row*col-wrow*wcol-1 :][::-1]
+    kLargestIndices = np.argsort(acDCTlist,axis=None)[row*col-wrow*wcol-1 :][::-1]
+    # print(kLargestIndices)
+    # print(acDCTlist[kLargestIndices])
+    # print(len(kLargestIndices))
 
-    encryptPosDict = {}
-    for k in range(len(kLargest)):
-        found = False
-        for i in range(0,row):
-            if found:
-                break
-            for j in range(0,col):
-                if i == 0 and j == 0:
-                    continue
-                if found:
-                    break
-                if oriDCT[i][j] == kLargest[k]:
-                    # print(encryptPosDict)
-                    if (i,j) not in encryptPosDict.keys():
-                        print("position",(i,j),"occupied by index ",k,kLargest[k],"in watermark list")
-                        oriDCT[i][j] = oriDCT[i][j] * (1+alpha*watermark[k//wcol][k%wcol])
-                        encryptPosDict[(i,j)] = k
-                        found = True
-                    else:
-                        # print("position",(i,j),"been taken by ",k,kLargest[k],"in watermark list")
-                        continue
+    copyDCT = oriDCT
+    for k in range(len(kLargestIndices)):
+        kvalue = kLargestIndices[k]+1
+        # print("DCT transform",kvalue//col,kvalue%col)
+        # print("watermark index",k//wrow,k%wcol)
+        copyDCT[kvalue//col][kvalue%col] = oriDCT[kvalue//col][kvalue%col] * (1 + alpha * watermark[k//wcol][k%wcol])
 
-    encryptedImg = np.zeros((row,col))
-    encryptedImg[:,:] = idct(idct(oriDCT.T, norm = 'ortho').T,norm = 'ortho')
-    return encryptedImg,encryptPosDict
+    encryptedImg = np.zeros((row,col,3))
+    encryptedImg[:,:,0] = idct(idct(copyDCT.T, norm = 'ortho').T,norm = 'ortho')
+    encryptedImg[:,:,1] = originImg[:,:,1]
+    encryptedImg[:,:,2] = originImg[:,:,2]
+    
+    # print(np.max(encryptedImg))
+
+    # encryptedImg = copyDCT # test code
+
+    bgr = cv2.cvtColor(encryptedImg.astype(np.uint8), cv2.COLOR_YCrCb2BGR)
+    cv2.imwrite("EncryptedImage.tiff", bgr)
+
+    return encryptedImg,kLargestIndices
 
 # testarray = np.asarray([[10,10,7,6,5],[4,3,3,1,0]])
 # testmatrix = np.asarray([[10,2,3,4,3],[2,10,7,6,0],[10,7,6,5,3],[1,1,1,0,0],[4,4,2,3,10]])
-# testmatrix = np.asarray([[10,10,10,10,10],[10,10,10,10,10],[10,10,10,10,10],[10,10,10,10,10],[10,10,10,10,10]])
-encryptedImg, positionDict = EncodeWatermark(ycbcr[:,:,0], watermark,2)
+# # testmatrix = np.asarray([[10,10,10,10,10],[10,10,10,10,10],[10,10,10,10,10],[10,10,10,10,10],[10,10,10,10,10]])
+# encryptedImg, positionDict = EncodeWatermark(testmatrix, testarray,2)
+# print(encryptedImg)
+# print(positionDict)
+
+encryptedImg, positionDict = EncodeWatermark(ycbcr, watermark,0.25)
+print(encryptedImg.shape)
+
+
+cv2.imshow("Origin",ycbcr.astype(np.uint8))
+cv2.waitKey(0)
 cv2.imshow("Encrypted image",encryptedImg.astype(np.uint8))
 cv2.waitKey(0)
+
+def DecodeWatermark(originImg, encryptedImg,kLargestIndices,wrow,wcol,alpha):
+    row, col, _ = encryptedImg.shape
+    yChannel_e = encryptedImg[:,:,0]
+    yChannel_o = originImg[:,:,0]
+    # print(row,col)
+    watermark = np.zeros((wrow,wcol))
+
+    oriDCT = np.zeros((row,col))
+    oriDCT[:,:] = dct(dct(yChannel_o.T, norm = 'ortho').T,norm = 'ortho')
+    encryptDCT = np.zeros((row,col))
+    encryptDCT[:,:] = dct(dct(yChannel_e.T, norm = 'ortho').T,norm = 'ortho')
+    for k in range(len(kLargestIndices)):
+        kvalue = kLargestIndices[k]+1
+        # print("DCT transform",kvalue//col,kvalue%col)
+        # print("watermark index",k//wrow,k%wcol)
+        watermark[k//wcol][k%wcol] = (encryptDCT[kvalue//col][kvalue%col] / oriDCT[kvalue//col][kvalue%col] - 1) / alpha
+    return watermark
+
+extractedWM = DecodeWatermark(ycbcr,encryptedImg,positionDict,wrow,wcol,0.25)
+for i in range(extractedWM.shape[0]):
+    for j in range(extractedWM.shape[1]):
+        extractedWM[i,j] *= 255
+cv2.imshow("ExtractedWm",extractedWM.astype(np.uint8))
+cv2.waitKey(0)
 cv2.destroyAllWindows()
-# print(dctResult)
-# print(positions)
+
