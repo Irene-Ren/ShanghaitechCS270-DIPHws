@@ -257,7 +257,7 @@ def RebuildBlocks(dcDecodeList, acDecodeList):
     for i in range(row_8):
         for j in range(col_8):
             # print(dcDecodeList[i+j],acDecodeList[i+j])
-            zigzag = [dcDecodeList[i*row_8+j]] + acDecodeList[i*row_8+j]
+            zigzag = [dcDecodeList[i*col_8+j]] + acDecodeList[i*col_8+j]
             dct_b = dezigzag(zigzag) * Y_table
             blocks[i][j] = idct(idct(dct_b.T,norm = 'ortho').T,norm = 'ortho')
     return blocks
