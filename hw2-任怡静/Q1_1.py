@@ -5,6 +5,8 @@ import numpy as np
 import os
 import math
 from collections import Counter, OrderedDict
+import sys
+import getopt
 
 Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
            [12, 12, 14, 19, 26, 58, 60, 55],
@@ -14,27 +16,15 @@ Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
            [24, 35, 55, 64, 81 ,104 ,113 ,92],
            [49, 64, 78, 87, 103, 121, 120, 101],
            [72, 92, 95, 98, 112, 100, 103, 99]]
-# read the image and determine the row,col of the image (512x512)
-img = cv2.imread("hw2_files\Q1\lena.tiff")
-# img = cv2.imread("EncryptedImage.tiff")
-row, col, _ = img.shape
-row_8,col_8 =row//8,col//8
 
-cv2.imshow("Original Image",img)
-cv2.waitKey(0)
-
-ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-# cv2.imshow("YCBCR Image",ycbcr.astype(np.uint8))
-# cv2.waitKey(0)
-
-def Cut_Y64Blocks(yChannel):
+def Cut_Y64Blocks(yChannel, row_8,col_8):
     blocks = np.zeros((row_8, col_8, 8, 8),dtype = np.int16)
     for i in range (row_8):
         for j in range (col_8):
             blocks[i][j] = yChannel[i*8:(i+1)*8,j*8:(j+1)*8]
     return np.asarray(blocks)
 
-def DCTOnBlocks(blocks):
+def DCTOnBlocks(blocks,row_8,col_8):
     dctBlocks = np.zeros((row_8,col_8,8,8))
     for i in range(row_8):
         for j in range(col_8):
@@ -44,11 +34,6 @@ def DCTOnBlocks(blocks):
             dctBlocks[i][j] = dct_b
     return dctBlocks
 
-blocks = Cut_Y64Blocks(ycbcr[:,:,0])
-dctBlocks = DCTOnBlocks(blocks)
-
-qDctBlocks = (dctBlocks/Y_table).round().astype(np.int16)
-################################################
 def zigZag(block):
     lines=[[] for i in range(8+8-1)] 
     for y in range(8): 
@@ -57,10 +42,8 @@ def zigZag(block):
             if(i%2 ==0): 
                 lines[i].insert(0,block[y][x]) 
             else:  
-                lines[i].append(block[y][x]) 
-    # print(lines)
+                lines[i].append(block[y][x])
     return np.asarray([coefficient for line in lines for coefficient in line])
-
 
 def TruncateEndZeros(zigzagAC):
     index = len(zigzagAC) - 1
@@ -74,10 +57,7 @@ def TruncateEndZeros(zigzagAC):
         truncated.append(zigzagAC[i])
     return truncated
 
-# testTrun = TruncateEndZeros(zigZag(qDctBlocks[0][0]))
-# print("Truncated :",testTrun)
-
-def CollectSymbols(qDctBlocks):
+def CollectSymbols(qDctBlocks, row_8, col_8):
     symbols = []
     for i in range(row_8):
         for j in range(col_8):
@@ -86,9 +66,6 @@ def CollectSymbols(qDctBlocks):
             symbols += "E"
     return symbols
 
-symbols = CollectSymbols(qDctBlocks)
-# print(symbols)
-
 def CalculateProbabilities(symbols):
     counts = dict(Counter(symbols))
     probDict = dict(sorted(counts.items(), key=lambda item: item[1]))
@@ -96,16 +73,8 @@ def CalculateProbabilities(symbols):
         probDict[key] /= float(len(symbols))
     return probDict
 
-probDict = CalculateProbabilities(symbols)
-# print(probDict)
-# print(len(probDict))
-# print(sum(probDict.values()))
-
 def GenHuffmanDict(p):
     '''Return a Huffman code for an ensemble with distribution p.'''
-    # print(sum(p.values()))
-    # print(p)
-
     # Base case of only two symbols, assign 0 or 1 arbitrarily
     if(len(p) == 2):
         return dict(zip(p.keys(), ['0', '1']))
@@ -130,11 +99,7 @@ def lowest_prob_pair(p):
     sorted_p = sorted(p.items(), key=lambda item: item[1])
     return sorted_p[0][0], sorted_p[1][0]
 
-huffmanCodeDict = GenHuffmanDict(probDict)
-# print(huffmanCodeDict)
-# print(len(huffmanCodeDict))
-
-def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode): 
+def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode, row_8, col_8): 
     #TODO: NEED to determine one that is unique, also the DC part need some considerations
     codeWords = ''
     code_dc = ''
@@ -156,21 +121,8 @@ def HuffmanEncode(huffmanCodeDict, qDctBlocks, endCode):
     codeWords = code_dc+codeWords
     return codeWords
 
-huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks, huffmanCodeDict['E'])
 def runLength2bytes(code):
     return bytes([len(code)%8]+[int(code[i:i+8],2) for i in range(0, len(code), 8)])
-
-f = open("code_binary.txt", "w")
-f.write(huffmanEncodeMatrix)
-f.close()
-
-code_in_bytes = runLength2bytes(huffmanEncodeMatrix)
-
-f = open("code.txt", "wb")
-f.write(code_in_bytes)
-f.close()
-
-# print(huffmanEncodeMatrix)
 
 def DCDecode(dc_text):
     decoded_text_dc = []
@@ -181,7 +133,6 @@ def DCDecode(dc_text):
 
 def huffmanDecode (dictionary, ac_text):
     huffmanDecodeDict = {v: k for k, v in dictionary.items()}
-    # print(huffmanDecodeDict)
     current_code = ""
     decode_block = []
     decode_all = []
@@ -208,13 +159,6 @@ def huffmanDecode (dictionary, ac_text):
 
     return decode_all
 
-dcDecodetest = DCDecode(huffmanEncodeMatrix[0:8*64*64])
-# print (dcDecodetest)
-
-huffmanDecodetest = huffmanDecode(huffmanCodeDict,huffmanEncodeMatrix[8*64*64:])
-# print(huffmanDecodetest)
-# print(huffmanDecodetest[0])
-
 def dezigzag(List):
     n = int((len(List))**0.5)
     matrix = np.zeros([n,n],dtype=np.int16)
@@ -233,26 +177,8 @@ def dezigzag(List):
                     matrix[x,i-x] = List[index]
                     index = index +1
     return matrix
-# array = [dcDecodetest[0]] + huffmanDecodetest[0]
-# print(array)
-# testblock = dezigzag(array)
-# print(testblock)
-# print(qDctBlocks[0,0])
-# print(type(testblock))
-# print(type(qDctBlocks[0,0]))
 
-# for i in range(row_8):
-#     for j in range(col_8):
-#         # print(dcDecodeList[i+j],acDecodeList[i+j])
-#         zigzag = [dcDecodetest[i*row_8+j]] + huffmanDecodetest[i*row_8+j]
-#         tmp = dezigzag(zigzag)
-#         dct = qDctBlocks[i,j]
-#         for s in range(8):
-#             for t in range(8):
-#                 if tmp[s,t] != dct[s,t]:
-#                     print("ERROR at " + str((i,j)))
-
-def RebuildBlocks(dcDecodeList, acDecodeList):
+def RebuildBlocks(dcDecodeList, acDecodeList, row_8, col_8):
     blocks = np.zeros((row_8,col_8,8,8))
     for i in range(row_8):
         for j in range(col_8):
@@ -262,11 +188,7 @@ def RebuildBlocks(dcDecodeList, acDecodeList):
             blocks[i][j] = idct(idct(dct_b.T,norm = 'ortho').T,norm = 'ortho')
     return blocks
 
-rebuiltBlocks = RebuildBlocks(dcDecodetest, huffmanDecodetest)
-
-
-
-def RebuildPicture(rebuiltBlocks, YCbCrlayers):
+def RebuildPicture(rebuiltBlocks, YCbCrlayers, row_8, col_8):
     row = row_8 * 8
     col = col_8 * 8
     img = np.zeros((row,col,3))
@@ -277,31 +199,63 @@ def RebuildPicture(rebuiltBlocks, YCbCrlayers):
     img[:,:,2] = YCbCrlayers[:,:,2]
     return img
 
-recovered = RebuildPicture(rebuiltBlocks, ycbcr).astype(np.uint8)
-
-# cv2.imshow("recovered YCbCr",recovered)
-# cv2.waitKey(0)
-
-# test code to see if the image converting to YCRCB is broken
-bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
-cv2.imshow("Recovered RGB Image",bgr)
-# cv2.imwrite("DecompressedImage.tiff",bgr)
-
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
-ratio = (os.stat('hw2_files\Q1\lena.tiff').st_size) / len(code_in_bytes)
-# ratio = (os.stat('EncryptedImage.tiff').st_size) / len(code_in_bytes)
-print("The compression ratio is: %.3f : 1"%ratio)
-
 def RootMeanSquareError(originImg, recoveredImg):
     row,col = originImg.shape
     sum = np.sum(np.square(originImg - recoveredImg)) / (row * col)
     return math.sqrt(sum)
 
-RMSE = RootMeanSquareError(ycbcr[:,:,0].astype(np.uint8), recovered[:,:,0])
-print("The root mean square error is: %.3f"%RMSE)
-# testarray = np.asarray([[1,2,3],[2,3,4],[3,4,5]])
-# ts = np.square(testarray)
-# print(ts)
-# print(np.sum(ts))
+if __name__ == "__main__":
+    path = sys.argv[1]
+    
+    # read the image and determine the row,col of the image (512x512)
+    img = cv2.imread(path)
+    # img = cv2.imread("EncryptedImage.tiff")
+    row, col, _ = img.shape
+    row_8,col_8 =row//8,col//8
+
+    cv2.imshow("Original Image",img)
+    cv2.waitKey(0)
+
+    ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+
+    blocks = Cut_Y64Blocks(ycbcr[:,:,0], row_8, col_8)
+    dctBlocks = DCTOnBlocks(blocks, row_8, col_8)
+
+    qDctBlocks = (dctBlocks/Y_table).round().astype(np.int16)
+    symbols = CollectSymbols(qDctBlocks, row_8, col_8)
+    probDict = CalculateProbabilities(symbols)
+    huffmanCodeDict = GenHuffmanDict(probDict)
+    huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks, huffmanCodeDict['E'], row_8, col_8)
+    f = open("code_binary.txt", "w")
+    f.write(huffmanEncodeMatrix)
+    f.close()
+
+    code_in_bytes = runLength2bytes(huffmanEncodeMatrix)
+    f = open("code.txt", "wb")
+    f.write(code_in_bytes)
+    f.close()
+    
+    dcDecodetest = DCDecode(huffmanEncodeMatrix[0:8*64*64])
+    huffmanDecodetest = huffmanDecode(huffmanCodeDict,huffmanEncodeMatrix[8*64*64:])
+    
+    rebuiltBlocks = RebuildBlocks(dcDecodetest, huffmanDecodetest, row_8, col_8)
+    recovered = RebuildPicture(rebuiltBlocks, ycbcr, row_8, col_8).astype(np.uint8)
+    bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
+    cv2.imshow("Recovered RGB Image",bgr)
+    # cv2.imwrite("DecompressedImage.tiff",bgr)
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    ratio = (os.stat('hw2_files\Q1\lena.tiff').st_size) / len(code_in_bytes)
+    # ratio = (os.stat('EncryptedImage.tiff').st_size) / len(code_in_bytes)
+    print("The compression ratio is: %.3f : 1"%ratio)
+    
+    RMSE = RootMeanSquareError(ycbcr[:,:,0].astype(np.uint8), recovered[:,:,0])
+    print("The root mean square error is: %.3f"%RMSE)
+ 
+
+    
+
+    
+
