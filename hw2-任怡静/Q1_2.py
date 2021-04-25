@@ -21,19 +21,75 @@ for i in range(watermark.shape[0]):
 
 ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
 row, col, _ = img.shape
+row_8,col_8 =row//8,col//8
+Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
+           [12, 12, 14, 19, 26, 58, 60, 55],
+           [14, 13, 16, 24, 40, 57, 69, 56],
+           [14, 17, 22, 29, 51, 87, 80, 62],
+           [18, 22, 37, 56, 68 ,109 ,103 ,77],
+           [24, 35, 55, 64, 81 ,104 ,113 ,92],
+           [49, 64, 78, 87, 103, 121, 120, 101],
+           [72, 92, 95, 98, 112, 100, 103, 99]]
+def Cut_Y64Blocks(yChannel):
+    blocks = np.zeros((row_8, col_8, 8, 8),dtype = np.int16)
+    for i in range (row_8):
+        for j in range (col_8):
+            blocks[i][j] = yChannel[i*8:(i+1)*8,j*8:(j+1)*8]
+    return np.asarray(blocks)
 
-# oriDCT = np.zeros((row,col))
-# gray = ycbcr[:,:,0]
-# oriDCT[:,:] = dct(dct(gray.T, norm = 'ortho').T,norm = 'ortho')
-# acDCTlist = oriDCT.flatten()[1:]
-# k = 10
-# kLargest = list(acDCTlist[np.argsort(acDCTlist,axis=None)])[row*col-k-1:][::-1]
-# print(kLargest)
+def DCTOnBlocks(blocks):
+    dctBlocks = np.zeros((row_8,col_8,8,8))
+    for i in range(row_8):
+        for j in range(col_8):
+            dct_b = np.zeros((8,8))
+            b = blocks[i][j][:,:]
+            dct_b[:,:] = dct(dct(b.T, norm = 'ortho').T,norm = 'ortho')
+            dctBlocks[i][j] = dct_b
+    return dctBlocks
 
-# recovered = np.zeros((row,col))
-# recovered[:,:] = idct(idct(oriDCT.T,norm = 'ortho').T,norm = 'ortho')
-# cv2.imshow("Recovered",recovered.astype(np.uint8))
+blocks = Cut_Y64Blocks(ycbcr[:,:,0])
+dctBlocks = DCTOnBlocks(blocks)
 
+qDctBlocks = (dctBlocks/Y_table).round().astype(np.int16)
+################################################
+def zigZag(block):
+    lines=[[] for i in range(8+8-1)] 
+    for y in range(8): 
+        for x in range(8): 
+            i=y+x 
+            if(i%2 ==0): 
+                lines[i].insert(0,block[y][x]) 
+            else:  
+                lines[i].append(block[y][x]) 
+    # print(lines)
+    return np.asarray([coefficient for line in lines for coefficient in line])
+
+
+def TruncateEndZeros(zigzagAC):
+    index = len(zigzagAC) - 1
+    truncated = []
+    while index >= 0:
+        if zigzagAC[index] != 0:
+            # print("FOUND: ",index)
+            break
+        index -= 1
+    for i in range(index+1):
+        truncated.append(zigzagAC[i])
+    return truncated
+
+def CollectSymbols(qDctBlocks):
+    symbols = []
+    for i in range(row_8):
+        for j in range(col_8):
+            subSym = TruncateEndZeros(zigZag(qDctBlocks[i][j])[1:])
+            for s in subSym:
+                if s != 0:
+                    symbols.append(s)
+    return symbols
+
+symbols = CollectSymbols(qDctBlocks)
+# print(symbols)
+print(len(symbols))
 def EncodeWatermark(originImg, watermark, alpha):
     row, col, _ = originImg.shape
     yChannel = originImg[:,:,0]
@@ -70,7 +126,9 @@ def EncodeWatermark(originImg, watermark, alpha):
 
     bgr = cv2.cvtColor(encryptedImg.astype(np.uint8), cv2.COLOR_YCrCb2BGR)
     cv2.imwrite("EncryptedImage.tiff", bgr)
-
+    with open('coordinates.txt', 'w') as f:
+        for item in kLargestIndices:
+            f.write("%d," % item)
     return encryptedImg,kLargestIndices
 
 # testarray = np.asarray([[10,10,7,6,5],[4,3,3,1,0]])
@@ -106,9 +164,23 @@ def DecodeWatermark(originImg, encryptedImg,kLargestIndices,wrow,wcol,alpha):
         # print("watermark index",k//wrow,k%wcol)
         watermark[k//wcol][k%wcol] = (encryptDCT[kvalue//col][kvalue%col] / oriDCT[kvalue//col][kvalue%col] - 1) / alpha
     return watermark
-# img = cv2.imread("DecompressedImage.tiff")
-# ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+
 extractedWM = DecodeWatermark(ycbcr,encryptedImg,positionDict,wrow,wcol,0.2)
+
+# encryptimg = cv2.imread("DecompressedImage.tiff")
+# encryptycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+# my_file= open("coordinates.txt", "r")
+# content = my_file.read()
+# positionDict = content.split(",")
+# my_file.close()
+# positionDict.pop()
+# print(len(positionDict))
+# kLargestIndices = []
+# for i in positionDict:
+#     kLargestIndices.append(int(i))
+
+# extractedWM = DecodeWatermark(ycbcr,encryptycbcr,kLargestIndices,wrow,wcol,0.2)
+
 for i in range(extractedWM.shape[0]):
     for j in range(extractedWM.shape[1]):
         extractedWM[i,j] *= 255
@@ -116,4 +188,3 @@ extractedWM = cv2.resize(extractedWM,(wcol*ratio,wrow*ratio))
 cv2.imshow("ExtractedWm",extractedWM.astype(np.uint8))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
