@@ -7,6 +7,12 @@ img = cv2.imread("hw2_files\Q1\lena.tiff")
 watermarkData = loadmat("hw2_files\Q1\LOGO_CS270.mat")
 
 watermark = watermarkData["LOGO_CS270"]
+watermark = watermark[50:100,40:200]
+wrow,wcol = watermark.shape
+ratio = 1
+watermark = cv2.resize(watermark,(int(wcol/ratio),int(wrow/ratio)))
+wrow,wcol = int(wrow/ratio),int(wcol/ratio)
+print(watermark.shape)
 cv2.imshow("watermark",watermark.astype(np.uint8))
 cv2.waitKey(0)
 for i in range(watermark.shape[0]):
@@ -27,15 +33,13 @@ row, col, _ = img.shape
 # recovered = np.zeros((row,col))
 # recovered[:,:] = idct(idct(oriDCT.T,norm = 'ortho').T,norm = 'ortho')
 # cv2.imshow("Recovered",recovered.astype(np.uint8))
-wrow, wcol = watermark.shape
-
 
 def EncodeWatermark(originImg, watermark, alpha):
     row, col, _ = originImg.shape
     yChannel = originImg[:,:,0]
     # print(row,col)
     wrow,wcol = watermark.shape
-    # print(wrow,wcol)
+    print(wrow,wcol)
 
     oriDCT = np.zeros((row,col))
     oriDCT[:,:] = dct(dct(yChannel.T, norm = 'ortho').T,norm = 'ortho')
@@ -108,6 +112,7 @@ extractedWM = DecodeWatermark(ycbcr,encryptedImg,positionDict,wrow,wcol,0.2)
 for i in range(extractedWM.shape[0]):
     for j in range(extractedWM.shape[1]):
         extractedWM[i,j] *= 255
+extractedWM = cv2.resize(extractedWM,(wcol*ratio,wrow*ratio))
 cv2.imshow("ExtractedWm",extractedWM.astype(np.uint8))
 cv2.waitKey(0)
 cv2.destroyAllWindows()
