@@ -114,12 +114,13 @@ if __name__ == "__main__":
             watermarkData = loadmat(wmPath)
 
             watermark = watermarkData["LOGO_CS270"]
+            cv2.imshow("watermark",watermark.astype(np.uint8))
+            cv2.waitKey(0)
             watermark = watermark[50:100,40:200]
             wrow,wcol = watermark.shape
             watermark = cv2.resize(watermark,(int(wcol/ratio),int(wrow/ratio)))
             wrow,wcol = int(wrow/ratio),int(wcol/ratio)
-            cv2.imshow("watermark",watermark.astype(np.uint8))
-            cv2.waitKey(0)
+            
             for i in range(watermark.shape[0]):
                 for j in range(watermark.shape[1]):
                     watermark[i, j] /= 255
@@ -132,9 +133,9 @@ if __name__ == "__main__":
             bgr = cv2.cvtColor(encryptedImg, cv2.COLOR_YCrCb2BGR)
             cv2.imwrite("EncryptedImage.tiff", bgr)
 
-            cv2.imshow("Origin",ycbcr.astype(np.uint8))
+            cv2.imshow("Origin",img.astype(np.uint8))
             cv2.waitKey(0)
-            cv2.imshow("Encrypted image",encryptedImg)
+            cv2.imshow("Encrypted image",bgr)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
         elif o == "-d":
