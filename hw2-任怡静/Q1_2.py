@@ -2,25 +2,8 @@ import cv2
 import numpy as np
 from scipy.fftpack import dct, idct
 from scipy.io import loadmat
-
-img = cv2.imread("hw2_files\Q1\lena.tiff")
-watermarkData = loadmat("hw2_files\Q1\LOGO_CS270.mat")
-
-watermark = watermarkData["LOGO_CS270"]
-watermark = watermark[50:100,40:200]
-wrow,wcol = watermark.shape
-ratio = 1
-watermark = cv2.resize(watermark,(int(wcol/ratio),int(wrow/ratio)))
-wrow,wcol = int(wrow/ratio),int(wcol/ratio)
-cv2.imshow("watermark",watermark.astype(np.uint8))
-cv2.waitKey(0)
-for i in range(watermark.shape[0]):
-    for j in range(watermark.shape[1]):
-        watermark[i, j] /= 255
-
-ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-row, col, _ = img.shape
-row_8,col_8 =row//8,col//8
+import sys
+import getopt
 Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
            [12, 12, 14, 19, 26, 58, 60, 55],
            [14, 13, 16, 24, 40, 57, 69, 56],
@@ -29,6 +12,7 @@ Y_table = [[16, 11, 10, 16, 24, 40, 51, 61],
            [24, 35, 55, 64, 81 ,104 ,113 ,92],
            [49, 64, 78, 87, 103, 121, 120, 101],
            [72, 92, 95, 98, 112, 100, 103, 99]]
+
 def Cut_Y64Blocks(yChannel):
     blocks = np.zeros((row_8, col_8, 8, 8),dtype = np.int16)
     for i in range (row_8):
@@ -45,21 +29,6 @@ def DCTOnBlocks(blocks):
             dct_b[:,:] = dct(dct(b.T, norm = 'ortho').T,norm = 'ortho')
             dctBlocks[i][j] = dct_b
     return dctBlocks
-
-blocks = Cut_Y64Blocks(ycbcr[:,:,0])
-dctBlocks = DCTOnBlocks(blocks)
-
-qDctBlocks = (dctBlocks/Y_table).round().astype(np.int16)
-# positives = []
-# for i in range(row_8):
-#     for j in range(col_8):
-#         for s in range(8):
-#             for t in range(8):
-#                 if qDctBlocks[i,j,s,t] != 0:
-#                     if not (s == 0 and t == 0):
-#                         positives.append(qDctBlocks[i,j,s,t])
-# print(positives)
-# print(len(positives))
                 
 def EncodeWatermarkBlocks(originYchannel, watermark, alpha):
     wrow,wcol = watermark.shape
@@ -85,7 +54,6 @@ def EncodeWatermarkBlocks(originYchannel, watermark, alpha):
                             copyDCT[i,j,s,t] = qDctBlocks[i,j,s,t] * (1 + alpha * watermark[k//wcol][k%wcol])
                             k += 1
     return None
-watermarkedBlocks = EncodeWatermarkBlocks(ycbcr[:,:,0],watermark,2)
 
 def RebuildPicture(watermarkBlocks,YCbCrlayers):
     row = row_8 * 8
@@ -103,12 +71,6 @@ def RebuildPicture(watermarkBlocks,YCbCrlayers):
     img[:,:,2] = YCbCrlayers[:,:,2]
     return img
 
-encryptedImg = RebuildPicture(watermarkedBlocks, ycbcr)
-
-cv2.imshow("Origin",ycbcr.astype(np.uint8))
-cv2.waitKey(0)
-cv2.imshow("Encrypted image",encryptedImg.astype(np.uint8))
-cv2.waitKey(0)
 
 def DecodeWatermark(originYchannel, encryptedYchannel,wrow,wcol,alpha):
     watermark = np.zeros((wrow,wcol))
@@ -130,34 +92,81 @@ def DecodeWatermark(originYchannel, encryptedYchannel,wrow,wcol,alpha):
                         return watermark
                     if s >= 5 and t >= 4:
                         break
-                    if qDctBlocks_e[i,j,s,t] != 0:
+                    if qDctBlocks_o[i,j,s,t] != 0:
                         if not (s == 0 and t == 0):
                             watermark[k//wcol][k%wcol] = (qDctBlocks_e[i,j,s,t] / qDctBlocks_o[i,j,s,t] - 1) / alpha
                             k += 1
     return None
 
-extractedWM = DecodeWatermark(ycbcr[:,:,0],encryptedImg[:,:,0],wrow,wcol,2)
+if __name__ == "__main__":
+    ratio = 1
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "ed")
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print(err)  # will print something like "option -a not recognized"
+        sys.exit(2)
+    for o, a in opts:
+        if o == "-e":
+            imgPath = args[0]
+            wmPath = args[1]
+            img = cv2.imread(imgPath)
+            watermarkData = loadmat(wmPath)
+            print(list(watermarkData.keys()))
 
-# encryptimg = cv2.imread("DecompressedImage.tiff")
-# encryptycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-# my_file= open("coordinates.txt", "r")
-# content = my_file.read()
-# positionDict = content.split(",")
-# my_file.close()
-# positionDict.pop()
-# print(len(positionDict))
-# kLargestIndices = []
-# for i in positionDict:
-#     kLargestIndices.append(int(i))
+            watermark = watermarkData["LOGO_CS270"]
+            watermark = watermark[50:100,40:200]
+            wrow,wcol = watermark.shape
+            watermark = cv2.resize(watermark,(int(wcol/ratio),int(wrow/ratio)))
+            wrow,wcol = int(wrow/ratio),int(wcol/ratio)
+            cv2.imshow("watermark",watermark.astype(np.uint8))
+            cv2.waitKey(0)
+            for i in range(watermark.shape[0]):
+                for j in range(watermark.shape[1]):
+                    watermark[i, j] /= 255
 
-# extractedWM = DecodeWatermark(ycbcr,encryptycbcr,kLargestIndices,wrow,wcol,0.2)
+            ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+            row, col, _ = img.shape
+            row_8,col_8 =row//8,col//8
+            watermarkedBlocks = EncodeWatermarkBlocks(ycbcr[:,:,0],watermark,2)
+            encryptedImg = RebuildPicture(watermarkedBlocks, ycbcr).astype(np.uint8)
+            bgr = cv2.cvtColor(encryptedImg, cv2.COLOR_YCrCb2BGR)
+            cv2.imwrite("EncryptedImage.tiff", bgr)
 
-for i in range(extractedWM.shape[0]):
-    for j in range(extractedWM.shape[1]):
-        extractedWM[i,j] *= 255
-        if extractedWM[i,j] > 255:
-            extractedWM[i,j] = 255
-extractedWM = cv2.resize(extractedWM,(wcol*ratio,wrow*ratio))
-cv2.imshow("ExtractedWm",extractedWM.astype(np.uint8))
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+            cv2.imshow("Origin",ycbcr.astype(np.uint8))
+            cv2.waitKey(0)
+            cv2.imshow("Encrypted image",encryptedImg)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        elif o == "-d":
+            imgPath = args[0]
+            enimgPath = args[1]
+            img = cv2.imread(imgPath)
+            encrypted = cv2.imread(enimgPath)
+            ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+            encryptedImg = cv2.cvtColor(encrypted, cv2.COLOR_BGR2YCR_CB)
+            row, col, _ = img.shape
+            row_8,col_8 =row//8,col//8
+            wrow,wcol = 50,160
+
+            extractedWM = DecodeWatermark(ycbcr[:,:,0],encryptedImg[:,:,0],wrow,wcol,2)
+            for i in range(extractedWM.shape[0]):
+                for j in range(extractedWM.shape[1]):
+                    extractedWM[i,j] *= 255
+                    if extractedWM[i,j] > 255:
+                        extractedWM[i,j] = 255
+            # invertedWM = 255 - extractedWM
+            # kernel = np.ones((2,3),np.uint8)
+            # erosionWM = cv2.erode(invertedWM,kernel,iterations = 1)
+            # extractedWM = 255 - erosionWM
+            extractedWM = cv2.resize(extractedWM,(wcol*ratio,wrow*ratio))
+            cv2.imshow("ExtractedWm",extractedWM.astype(np.uint8))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        else:
+            assert False, "unhandled option"
+
+
+
+
+

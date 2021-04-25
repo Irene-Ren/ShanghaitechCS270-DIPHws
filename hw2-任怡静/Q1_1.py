@@ -242,12 +242,12 @@ if __name__ == "__main__":
     recovered = RebuildPicture(rebuiltBlocks, ycbcr, row_8, col_8).astype(np.uint8)
     bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
     cv2.imshow("Recovered RGB Image",bgr)
-    # cv2.imwrite("DecompressedImage.tiff",bgr)
+    cv2.imwrite("DecompressedImage.tiff",bgr)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    ratio = (os.stat('hw2_files\Q1\lena.tiff').st_size) / len(code_in_bytes)
+    ratio = (os.stat(path).st_size) / len(code_in_bytes)
     # ratio = (os.stat('EncryptedImage.tiff').st_size) / len(code_in_bytes)
     print("The compression ratio is: %.3f : 1"%ratio)
     
