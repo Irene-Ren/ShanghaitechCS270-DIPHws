@@ -112,7 +112,6 @@ if __name__ == "__main__":
             wmPath = args[1]
             img = cv2.imread(imgPath)
             watermarkData = loadmat(wmPath)
-            print(list(watermarkData.keys()))
 
             watermark = watermarkData["LOGO_CS270"]
             watermark = watermark[50:100,40:200]
@@ -155,18 +154,23 @@ if __name__ == "__main__":
                     extractedWM[i,j] *= 255
                     if extractedWM[i,j] > 255:
                         extractedWM[i,j] = 255
-            # invertedWM = 255 - extractedWM
-            # kernel = np.ones((2,3),np.uint8)
-            # erosionWM = cv2.erode(invertedWM,kernel,iterations = 1)
-            # extractedWM = 255 - erosionWM
+            
             extractedWM = cv2.resize(extractedWM,(wcol*ratio,wrow*ratio))
-            cv2.imshow("ExtractedWm",extractedWM.astype(np.uint8))
+            realWm = np.ones((150,240)) * 255
+            realWm[50:100,40:200] = extractedWM
+            invertedWM = 255 - realWm
+            kernel = np.ones((2,2),np.uint8)
+            erosionWM = cv2.erode(invertedWM,kernel,iterations = 2)
+            kernel3 = np.ones((3,3),np.uint8)
+            kernel3[0][0] = 0
+            kernel3[2][0] = 0
+            kernel3[0][2] = 0
+            kernel3[2][2] = 0
+            dilation = cv2.dilate(erosionWM,kernel3,iterations = 1)
+            realWm = 255 - dilation
+            cv2.imshow("ExtractedWm",realWm.astype(np.uint8))
+            cv2.imwrite("ExtractedWatermark.jpg", realWm.astype(np.uint8))
             cv2.waitKey(0)
             cv2.destroyAllWindows()
         else:
             assert False, "unhandled option"
-
-
-
-
-
