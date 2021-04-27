@@ -5,7 +5,7 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 
 
-img = cv2.imread("hw2_files/Q3/1/1.png")
+img = cv2.imread("hw2_files/Q3/3/3.png")
 # img = cv2.imread("EncryptedImage.tiff")
 row, col, _ = img.shape
 print(row, col)
@@ -27,8 +27,14 @@ cv2.waitKey(0)
 
 test = magnitude_spectrum
 
+cv2.imshow("test",test.astype(np.uint8))
+cv2.waitKey(0)
+
 # threshold
 thresh = cv2.adaptiveThreshold(test.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 13, 3)
+
+cv2.imshow("test2",thresh)
+cv2.waitKey(0)
 thresh = 255 - thresh
 
 # apply close to connect the white areas
@@ -92,8 +98,11 @@ for i in range(100):
     if currV < nextV:
         index_2 = i
         break
+if abs(index_1 - index_2) > 5:
+    index_1 = index_2 = max((index_1, index_2))
 print(index_1, index_2)
-L = 2 * row / (index_1+index_2)
+
+L =  2 * row / (index_1+index_2)
 print(L)
 plt.plot(xaxis,proj)
 plt.show()
