@@ -10,7 +10,6 @@
   - **OpenCv**, install by using `pip install opencv-contrib-python`
   - **Collections**: install by using `pip install collection`
   - **Scipy**: install by using `pip install scipy`
-  - 
 - **Execution and Operations**
   - **For Question 1.1, which is to compress lena.tiff and show the codewords and compressed image, do the following: **
     - Run code `python Q1_1.py "hw2_files/Q1/lena.tiff"`
@@ -41,6 +40,7 @@
 
 #### Question 3
 
-- Open `hw1_main.mlx` in the `Codes` folder
-- Start the code to see the result
+- Open `Q3.mlx` in the `Codes` folder
+- Start the code to see the result on the right
 - **Make sure the file path is correct**
+
