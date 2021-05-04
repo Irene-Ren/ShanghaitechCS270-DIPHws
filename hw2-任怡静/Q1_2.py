@@ -32,7 +32,7 @@ def DCTOnBlocks(blocks):
                 
 def EncodeWatermarkBlocks(originYchannel, watermark, alpha):
     wrow,wcol = watermark.shape
-    print(wrow,wcol)
+    # print(wrow,wcol)
 
     blocks = Cut_Y64Blocks(originYchannel)
     dctBlocks = DCTOnBlocks(blocks)
@@ -159,6 +159,8 @@ if __name__ == "__main__":
             extractedWM = cv2.resize(extractedWM,(wcol*ratio,wrow*ratio))
             realWm = np.ones((150,240)) * 255
             realWm[50:100,40:200] = extractedWM
+
+            # Some dilation and erosion make the image more clear, comment out to see the original
             invertedWM = 255 - realWm
             kernel = np.ones((2,2),np.uint8)
             erosionWM = cv2.erode(invertedWM,kernel,iterations = 2)
@@ -169,6 +171,7 @@ if __name__ == "__main__":
             kernel3[2][2] = 0
             dilation = cv2.dilate(erosionWM,kernel3,iterations = 1)
             realWm = 255 - dilation
+
             cv2.imshow("ExtractedWm",realWm.astype(np.uint8))
             cv2.imwrite("ExtractedWatermark.jpg", realWm.astype(np.uint8))
             cv2.waitKey(0)
