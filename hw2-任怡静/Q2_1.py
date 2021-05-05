@@ -8,8 +8,8 @@ kernel = np.array([0.25-0.4/2.0, 0.25, 0.4, 0.25, 0.25-0.4/2.0])
 gaussian = np.outer(kernel, kernel)
 
 def Reduce(layer, gaussian):
-    return layer[::2, ::2]
-    # return convolve2d(layer, gaussian,'same')[::2, ::2]
+    # return layer[::2, ::2]
+    return convolve2d(layer, gaussian,'same')[::2, ::2]
 
 def Expand(layer, gaussian):
     row, col = layer.shape
@@ -76,6 +76,11 @@ girl_features = np.float32(girl_features)
 man_features = loadmat("hw2_files\Q2\man_features.mat")["man_features"]
 man_features = np.float32(man_features)
 M = cv2.getAffineTransform(man_features, girl_features)
+# M = np.array([[1.6909, -0.0104,-88.1811],[0.0104, 1.6909, -109.4904]])
+# M = np.array([[1.6939, -0.0215,-87.1060],[0.0215, 1.6939, -111.8089]])
+# M = np.array([[1.6327, -0.0219,-76.5426],[0.0219, 1.6327, -100.1675]])
+# M = np.array([[1.6275, -0.0111,-78.0258],[0.0111, 1.6275, -97.5709]])
+print(M)
 man_trans = np.zeros(girl_img.shape)
 grow,gcol,_ = girl_img.shape
 mask = np.zeros((grow,gcol))
@@ -90,7 +95,7 @@ cv2.imshow("Answer",C)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-levels = 8
+levels = 100
 maskPry = GaussianPyramid(mask,levels)
 image = np.zeros(girl_img.shape)
 
