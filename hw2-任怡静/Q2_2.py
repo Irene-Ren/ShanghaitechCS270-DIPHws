@@ -13,16 +13,16 @@ def GetSurrounding(index, pic_col):
     i,j = index
     return [(i,j+pic_col),(i,j-pic_col),(i,j+1),(i,j-1)]
 
-def CommonLaplacianMatrix(n, m):
-    laplacianDiagPart = scipy.sparse.lil_matrix((m, m))
+def CommonLaplacianMatrix(bg_row, bg_col):
+    laplacianDiagPart = scipy.sparse.lil_matrix((bg_col, bg_col))
     laplacianDiagPart.setdiag(4)
     laplacianDiagPart.setdiag(-1, -1)
     laplacianDiagPart.setdiag(-1, 1)
         
-    laplacianMatrix = scipy.sparse.block_diag([laplacianDiagPart] * n).tolil()
+    laplacianMatrix = scipy.sparse.block_diag([laplacianDiagPart] * bg_row).tolil()
     
-    laplacianMatrix.setdiag(-1, 1*m)
-    laplacianMatrix.setdiag(-1, -1*m)
+    laplacianMatrix.setdiag(-1, bg_col)
+    laplacianMatrix.setdiag(-1, -1*bg_col)
     
     return laplacianMatrix
 
