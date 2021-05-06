@@ -27,11 +27,6 @@ def CommonLaplacianMatrix(bg_row, bg_col):
     return laplacianMatrix
 
 def PossionBlending(source, target, mask, offset):
-    """The poisson blending function. 
-
-    Refer to: 
-    Perez et. al., "Poisson Image Editing", 2003.
-    """
     # shape of mask and source is same as shape of background.
     bg_row, bg_col, _ = target.shape
     
@@ -75,7 +70,7 @@ def PossionBlending(source, target, mask, offset):
                     blendedSource[i, j] = 255
                 if blendedSource[i, j] < 0:
                     blendedSource[i, j] = 0
-        blendedSource = blendedSource.astype('uint8')
+        blendedSource = np.uint8(blendedSource)
 
         target[0:bg_row, 0:bg_col, alpha] = blendedSource
 
@@ -89,6 +84,7 @@ if __name__ == "__main__":
     src_path = sys.argv[1]
     tgt_path = sys.argv[2]
     mask_path = sys.argv[3]
+    result_path = sys.argv[4]
     
     source = cv2.imread(src_path)
     target = cv2.imread(tgt_path)
@@ -107,6 +103,8 @@ if __name__ == "__main__":
     source = cv2.warpAffine(source,M,(bg_col,bg_row))
     mask = cv2.warpAffine(mask,M,(bg_col,bg_row))
     cv2.imshow("SetPosition",source)
+    cv2.imwrite(result_path + "SetPosition.jpg", ImageResize(source, 1/ratio))
+    print("PRESS ENTER TO PROCEED")
     cv2.waitKey(0)
 
     unblendedImg = target
@@ -115,11 +113,14 @@ if __name__ == "__main__":
             if mask[i,j] != 0:
                 unblendedImg[i,j] = source[i,j]
     cv2.imshow("NonBlended", unblendedImg)
+    cv2.imwrite(result_path + "NonBlended.jpg", ImageResize(unblendedImg, 1/ratio))
+    print("PRESS ENTER TO PROCEED")
     cv2.waitKey(0)
 
     result = PossionBlending(source, target, mask, offset)
 
     cv2.imshow("PossionBlending", result)
-    cv2.imwrite("PossionBlending.jpg", ImageResize(result,1/ratio))
+    cv2.imwrite(result_path + "PossionBlending.jpg", ImageResize(result,1/ratio))
+    print("PRESS ENTER TO PROCEED")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
