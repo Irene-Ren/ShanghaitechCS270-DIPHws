@@ -52,6 +52,12 @@ def Collapse(blend_pyramid):
         layer = Expand(layer, gaussian)[0:row, 0:col] + blend_pyramid[i]
     return layer
 
+def ImageResize(img, ratio):
+    row = img.shape[0]
+    col = img.shape[1]
+    ret = cv2.resize(img,(int(col*ratio),int(row*ratio)))
+    return ret
+
 def reconstruct_lablacian(laplacian_pyramid):
     output = np.zeros(
         (laplacian_pyramid[0].shape[0], laplacian_pyramid[0].shape[1]), dtype=np.float64)
@@ -71,27 +77,34 @@ def reconstruct_lablacian(laplacian_pyramid):
 
 girl_img = cv2.imread("hw2_files\Q2\girl.jpeg")
 man_img = cv2.imread("hw2_files\Q2\man.jpg")
+
+# Registeration Read from mat files
 girl_features = loadmat("hw2_files\Q2\girl_features.mat")["girl_features"]
 girl_features = np.float32(girl_features)
 man_features = loadmat("hw2_files\Q2\man_features.mat")["man_features"]
 man_features = np.float32(man_features)
 M = cv2.getAffineTransform(man_features, girl_features)
-# M = np.array([[1.6909, -0.0104,-88.1811],[0.0104, 1.6909, -109.4904]])
+
+# Registeration predefined
+M = np.array([[1.6909, -0.0104,-88.1811],[0.0104, 1.6909, -109.4904]])
+
+#Not so good backups
 # M = np.array([[1.6939, -0.0215,-87.1060],[0.0215, 1.6939, -111.8089]])
 # M = np.array([[1.6327, -0.0219,-76.5426],[0.0219, 1.6327, -100.1675]])
-# M = np.array([[1.6275, -0.0111,-78.0258],[0.0111, 1.6275, -97.5709]])
-print(M)
+
+# print(M)
 man_trans = np.zeros(girl_img.shape)
 grow,gcol,_ = girl_img.shape
+for i in range(3):
+    man_trans[:,:,i] = cv2.warpAffine(man_img[:,:,i], M, (gcol,grow))
+
 mask = np.zeros((grow,gcol))
 mask[:,0:int(gcol / 2)] = np.ones((grow,int(gcol/2)))
 
-for i in range(3):
-    man_trans[:,:,i] = cv2.warpAffine(man_img[:,:,i], M, (gcol,grow))
-cv2.imshow("Pic",np.uint8(man_trans))
-cv2.waitKey(0)
 C = cv2.addWeighted(np.uint8(girl_img), 0.5, np.uint8(man_trans), 0.5, 0.0)
-cv2.imshow("Answer",C)
+cv2.imshow("RegisterationResult",C)
+cv2.imwrite("Results\Q2\RegisterationResult_p.jpg", C)
+print("PRESS ENTER TO PROCEED")
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
@@ -109,7 +122,6 @@ for i in range(3):
     blend_pyr = Blend(man_LPyr, girl_LPyr, maskPry)
     recovered = Collapse(blend_pyr)
 
-    print(recovered.shape)
     reco_r,reco_c = recovered.shape
     for s in range(reco_r):
         for t in range(reco_c):
@@ -117,10 +129,10 @@ for i in range(3):
                 recovered[s, t] = 255
             if recovered[s, t] < 0:
                 recovered[s, t] = 0
-    print(recovered.shape)
-    print(image.shape)
     image[:,:,i] = recovered
 
 cv2.imshow("Blended", np.uint8(image))
+cv2.imwrite("Results\Q2\BlendedImage_p.jpg", np.uint8(image))
+print("PRESS ENTER TO PROCEED")
 cv2.waitKey(0)
 cv2.destroyAllWindows()
