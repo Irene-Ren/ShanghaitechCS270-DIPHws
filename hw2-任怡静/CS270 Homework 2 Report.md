@@ -1,65 +1,35 @@
-### CS270 Homework 1 Report
+### CS270 Homework 2 Report
 
 任怡静 2018533144
 
-#### Question 1 Defogging and Fogging
+#### Question 1 Image Compression and Watermarking
 
 - How do you implement your algorithm? Describe it by flow charts or words. (6 pts)
+  - **Truncated Huffman Compression**
+    - For Picture -> Code encryption (**Compression**): 
+      - First I cut the image into $8*8$ blocks, do **DCT** operation on each block, divide it by the **Y_TABLE** provided, flatten them in **zig-zag** fashion and **cut out** all the zeros in the tail (that is to say if a zigzag array is: [40 0 2 3 0 1 0 0 0 0 ...], I only keep the [40 0 2 3 0 1] part)
+      - Then I **collect all the symbols** in the truncated zigzagged arrays mentioned above, and also add an **'EOF'** (in program is 'E') symbol at each end of the arrays. Count all symbols' probabilities, and **construct Huffman dictionary** from these probabilities.
+      - Encode the codes in this fashion:
+        - **DC_CODES**: Extract the first element in each zigzagged array (The DC values), and transfer them into **8-bit binary form**
+        - **AC_CODES**: Connected the rest in zigzagged array by translating each value in the array to the Huffman binary code, and add the 'E' 's Huffman binary code at each end of an array, connect all pieces together
+        - Connect the above two pieces as: **DC_CODES** + **AC_CODES**
+    - For Code -> Picture decryption (**Display**) :
+      - First cut out the $[0:8 * 64 * 64]$ part of the binary code and decode them by cutting each 8 of them and transfer them into **decimal numbers**, fill them in the **first place** in a 1D array.
+      - Then decode the rest consulting to the Huffman code dictionary, also fill them in the 1D array
+      - Fill in array with zeros in the back **until the array has size 64**, then de-Zigzag it and put them in place.
+      - Time each de-zigzagged block with **Y_TABLE**, apply **IDCT** operation to them, and combine the blocks into restored image.
+  - **Image Watermarking**
+    - For encrypting watermark to image:
+      - The encrypting process is quite similar to the image compression process until truncating zigzagged arrays. I also cut the picture into $8*8$ blocks, do **DCT**, divide by Y_TABLE
+      - And then I check for non-zero AC values in the **qDCT** blocks (the blocks that did **DCT** and divided by **Y_TABLE**), replace the value $q_k$ at that position by  $q_{k(i,j,s,t)} = q_{k(i,j,s,t)} * (1 + \alpha * w_k)$, find $k$ values then stop ($k$ is the length of the flatten size of watermark)
+      - Rebuild the picture by timing the Y_TABLE, apply **IDCT** operation and combine them.
+      - For better result, I **cut out the white spaces** in LOGO_CS270.mat making it smaller, then restore it by **filling 255** in the cut areas.
+      - Also for better result, I did some **erosions and dilations** to the extracted image.
 
-  - For Picture Defogging: 
-    - First I use the CLAHE method, which will select a small unit to adjust locally rather than adjust the picture as a whole.
-    - Then I use a white balance color correction to adjust a bit to make the picture's color not too over-saturated.
-  - For Picture Fogging:
-    - To implement the fogging effect, I use a line positioned at **m**, and calculate the distance between every points to this line, the nearer to **m**, the heavier the fog is and vice versa. 
+- Results requested in Task (1). (14 pts) 
+  - Left Original, right Compressed                                               <img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\lena.jpg" alt="lena" style="zoom:50%;" /><img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\DecompressedImage.jpg" style="zoom: 50%;" />
+- Results of watermarking extracted from the compressed image. (14 pts)![](D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\Results\Q1\ExtractedWatermark.jpg)
 
-- Describe implement details of your code. (6 pts)
-
-  - For CLAHE:
-
-    - Step 1: I pick a small unit of 32 * 32 pixels.
-    - Step 2: Count the histogram in this unit, change the histogram to PDF of the intensity of this unit. And for the histogram bars that goes over **up bound**, I trim it to bound, and collect all the trimmed bars to integral them, then add the average of this integral to all bars. (see the figure below)
-    - Step 3: Then I transform the PDF in step 2 into CDF.
-    - Step 4: The output of this intensity is 255 * CDF.
-    - Apply this to the R, G, B layers and iterate the unit through the whole picture.
-    - <img src="D:\Rigin_Rain\Classes\CS270\hws\hw1\CLAHE.png" style="zoom:50%;" />
-
-  - For white balance:
-
-    - Step 1: Calculate the mean for R, G, B, gray layers' values individually, note them as **R_bar**, **G_bar**, **B_bar**, **I_bar**, which gray = 0.299 .* R + 0.587 .* G + 0.114 .* B
-
-    - Step 2: Form a matrix as follows:
-
-    - $$
-      k \_ matrix = \left[ \matrix{  \frac{I \_ bar}{R \_ bar} & 0 & 0\\   0 & \frac{I \_ bar}{G \_ bar} & 0\\  0 & 0 & \frac{I \_ bar}{B \_ bar}  } \right]
-      $$
-
-    - Step 3: Calculate the cross product of **k_matrix** and the 1 * 3 [R, G, B] vector at all points on the picture, return the calculated picture matrix.
-
-  - For  Fogging:
-
-    - Input **m** indicate a focus, the intensity of the fog is only depending on the vertical distance of the picture pixel position **I(i, j, alpha)** and line **m**. **β** and **A** are coefficients that adjust the final effect of fog, making the fog look whiter and so on.
-
-    - Step 1: Loop through the whole picture, use the calculations below to indicate ratio in specific positions, which the ratio will be deciding how much original value of the picture is saved at its position:
-
-    - $$
-      ratio = e^{-\beta * (-0.05 * |j-m| + 13)}
-      $$
-
-    - Step 2: Calculate the **output** by timing the ratio to the input picture matrix, to prevent the value overflows, we divide the original input matrix by 255. And then since the picture is now at a very low intensity (ratio < 1), we add a constant to make the fog white:
-
-    - $$
-      A * (1 - ratio(row, col))
-      $$
-
-    - Step 3: Output the result
-
-- Results of defogging processing (like Fig. 1(b)). (9 pts)
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\Defogging_Result.png)
-
-- Results of fogging processing (like Fig 2(b)). (9 pts)
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\Fogging_Result.png)
 
 #### Question 2 Image stitching
 
