@@ -27,41 +27,37 @@
       - Also for better result, I did some **erosions and dilations** to the extracted image.
 
 - Results requested in Task (1). (14 pts) 
-  - Left Original, right Compressed                                               <img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\lena.jpg" alt="lena" style="zoom:50%;" /><img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\DecompressedImage.jpg" style="zoom: 50%;" />
+
+  - Left Original, right Compressed
+
+    <figure class="half">
+        <img src="lena.jpg" style="zoom:50%;" /><img src="DecompressedImage.jpg" style="zoom:50%;" />
+    </figure>
+
 - Results of watermarking extracted from the compressed image. (14 pts)![](D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\Results\Q1\ExtractedWatermark.jpg)
 
 
-#### Question 2 Image stitching
+#### Question 2 Image Blending
 
-- How do you extract features from the images? (3 pts) How do you match the features? (3 pts)
-  - I use SIFT to extract features from images. 
-  - The matching is pretty simple, just check for two sets of descriptors, for each points in one set, match it with the nearest Euclidean-distance point in the other set, and if the two sets contains the same matches, we save this match as a rough valid match.
-- How do you detect the mismatches? (6 pts)
-  - I use RANSAC like method for mismatch filtering. 
-    - It will loop for 1000 times to see all the matched points whether their geometry distance is small enough to be fitful for a more delicate match. And it will break within 1000 times when the ratio of **thresh** matches are found.
-    - When changing the picked matches, the algorithm will also change the homographic matrix correspondingly.
-- Which transformation method do you use? How does it work? (8 pts)
-  - I use Homography for transformations.
-  - We need to find **h** to minimize the sum of the pair-points' distance after the transformation is applied. For selected pair points (at least four), substitute them into the equation below:
-  - <img src="D:\Rigin_Rain\Classes\CS270\hws\hw1\Eq_homography_fitting.png" style="zoom:50%;" />
-  - By the linear regression method, **h** is found to be the eigenvector of $A^TA$  corresponding to the smallest eigenvalue. 
-  - The calculated result of a 3*3 matrix will be the transformation the image needs, this matrix includes scaling, distortion and rotation, apply it onto the image matrix, then we have two transformed pieces.
-- Your matched features (like Fig 5). (4*2 pts)
-  - This is the matching of the rough match process, I don't have the data structure after filtering with RANSAC, thus this may not be accurate for the final result
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\match_1.png)
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\match_2.png)
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\match_3.png)
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\match_4.png)
-- Your matched result (like Fig 6 & Fig 7). (4*3pts)
-  - run `python stitch_images.py <NAME_OF_PIC_1>  <NAME_OF_PIC_2>` to see the result
-  - <img src="D:\Rigin_Rain\Classes\CS270\hws\hw1\stitch_1.png" style="zoom:80%;" />
-  - <img src="D:\Rigin_Rain\Classes\CS270\hws\hw1\stitch_2.png" style="zoom:36%;" />
-  - <img src="D:\Rigin_Rain\Classes\CS270\hws\hw1\stitch_3.png" style="zoom:46%;" />
-  - <img src="D:\Rigin_Rain\Classes\CS270\hws\hw1\stitch_4.png" style="zoom:41%;" />
+- **Pyramid-Based Image Blending** 
 
-#### Question 3 Color Transfer Between Images
+  - There are two versions of registrations, one is by reading two .mat feature files that contains man's and girl's feature and use code to match them, it performs well in blending chins. Another one uses a pre-defined matrix to do the transform, which do better in mouths and skins.
 
-- Explain the transformation steps, and your coding implementation. (7 pts)
+  - I think the pre-defined version is better
+
+    <figure class="half">
+        <img src="hw2_files/Q2/girl.jpeg" style="zoom:50%;" /><img src="hw2_files/Q2/man.jpg" style="zoom:50%;" /><img src="Results/Q2/RegisterationResult_m.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_m.jpg" style="zoom:50%;" /><img src="Results/Q2/RegisterationResult_p.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_p.jpg" style="zoom:50%;" />
+    </figure>
+
+- **Poisson-Based Image Blending**
+
+  <figure class="half">
+      <img src="Results/Q2/SetPosition.jpg" style="zoom:7%;" /><img src="Results/Q2/NonBlended.jpg" style="zoom:7%;" /><img src="Results/Q2/PossionBlending.jpg" style="zoom:7%;" />
+  </figure>
+
+#### Question 3 Image Deblurring
+
+- How do you implement your algorithm? Describe it by flow charts or words. (6 pts)
 
   - Explain transformation steps:
 
