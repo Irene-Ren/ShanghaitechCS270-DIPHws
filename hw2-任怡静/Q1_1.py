@@ -206,6 +206,7 @@ def RootMeanSquareError(originImg, recoveredImg):
 
 if __name__ == "__main__":
     path = sys.argv[1]
+    result_path = sys.argv[2]
     
     # read the image and determine the row,col of the image (512x512)
     img = cv2.imread(path)
@@ -214,6 +215,7 @@ if __name__ == "__main__":
     row_8,col_8 =row//8,col//8
 
     cv2.imshow("Original Image",img)
+    print("PRESS ENTER TO PROCEED")
     cv2.waitKey(0)
 
     ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
@@ -226,12 +228,13 @@ if __name__ == "__main__":
     probDict = CalculateProbabilities(symbols)
     huffmanCodeDict = GenHuffmanDict(probDict)
     huffmanEncodeMatrix = HuffmanEncode(huffmanCodeDict, qDctBlocks, huffmanCodeDict['E'], row_8, col_8)
-    f = open("code_binary.txt", "w")
+
+    f = open(result_path + "code_binary.txt", "w")
     f.write(huffmanEncodeMatrix)
     f.close()
 
     code_in_bytes = runLength2bytes(huffmanEncodeMatrix)
-    f = open("code.txt", "wb")
+    f = open(result_path + "code.txt", "wb")
     f.write(code_in_bytes)
     f.close()
     
@@ -242,8 +245,9 @@ if __name__ == "__main__":
     recovered = RebuildPicture(rebuiltBlocks, ycbcr, row_8, col_8).astype(np.uint8)
     bgr = cv2.cvtColor(recovered, cv2.COLOR_YCrCb2BGR)
     cv2.imshow("Recovered RGB Image",bgr)
-    cv2.imwrite("DecompressedImage.tiff",bgr)
+    cv2.imwrite(result_path + "DecompressedImage.tiff",bgr)
 
+    print("PRESS ENTER TO PROCEED")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 

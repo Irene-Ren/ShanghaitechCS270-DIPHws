@@ -58,15 +58,18 @@ def EncodeWatermarkBlocks(originYchannel, watermark, alpha):
 def RebuildPicture(watermarkBlocks,YCbCrlayers):
     row = row_8 * 8
     col = col_8 * 8
-    blocks = np.zeros((row_8,col_8,8,8))
     img = np.zeros((row,col,3))
     for i in range(row_8):
         for j in range(col_8):
             dct_b = watermarkBlocks[i][j] * Y_table
-            blocks[i][j] = idct(idct(dct_b.T,norm = 'ortho').T,norm = 'ortho')
-    for i in range(row_8):
-        for j in range(col_8):
-            img[i*8:(i+1)*8,j*8:(j+1)*8,0] = blocks[i,j]
+            block = idct(idct(dct_b.T,norm = 'ortho').T,norm = 'ortho')
+            for s in range(8):
+                for t in range(8):
+                    if block[s,t] > 235:
+                        block[s,t] = 235
+                    if block[s, t] < 16:
+                        block[s,t] = 16
+            img[i*8:(i+1)*8,j*8:(j+1)*8,0] = block
     img[:,:,1] = YCbCrlayers[:,:,1]
     img[:,:,2] = YCbCrlayers[:,:,2]
     return img
@@ -110,11 +113,14 @@ if __name__ == "__main__":
         if o == "-e":
             imgPath = args[0]
             wmPath = args[1]
+            resultPath = args[2]
+
             img = cv2.imread(imgPath)
             watermarkData = loadmat(wmPath)
 
             watermark = watermarkData["LOGO_CS270"]
             cv2.imshow("watermark",watermark.astype(np.uint8))
+            print("PRESS ENTER TO PROCEED")
             cv2.waitKey(0)
             watermark = watermark[50:100,40:200]
             wrow,wcol = watermark.shape
@@ -128,19 +134,23 @@ if __name__ == "__main__":
             ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
             row, col, _ = img.shape
             row_8,col_8 =row//8,col//8
-            watermarkedBlocks = EncodeWatermarkBlocks(ycbcr[:,:,0],watermark,2)
+            watermarkedBlocks = EncodeWatermarkBlocks(ycbcr[:,:,0],watermark,0.5)
             encryptedImg = RebuildPicture(watermarkedBlocks, ycbcr).astype(np.uint8)
             bgr = cv2.cvtColor(encryptedImg, cv2.COLOR_YCrCb2BGR)
-            cv2.imwrite("EncryptedImage.tiff", bgr)
+            cv2.imwrite(resultPath + "EncryptedImage.tiff", bgr)
 
             cv2.imshow("Origin",img.astype(np.uint8))
+            print("PRESS ENTER TO PROCEED")
             cv2.waitKey(0)
             cv2.imshow("Encrypted image",bgr)
+            print("PRESS ENTER TO PROCEED")
             cv2.waitKey(0)
             cv2.destroyAllWindows()
         elif o == "-d":
             imgPath = args[0]
             enimgPath = args[1]
+            resultPath = args[2]
+
             img = cv2.imread(imgPath)
             encrypted = cv2.imread(enimgPath)
             ycbcr = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
@@ -149,7 +159,7 @@ if __name__ == "__main__":
             row_8,col_8 =row//8,col//8
             wrow,wcol = 50,160
 
-            extractedWM = DecodeWatermark(ycbcr[:,:,0],encryptedImg[:,:,0],wrow,wcol,2)
+            extractedWM = DecodeWatermark(ycbcr[:,:,0],encryptedImg[:,:,0],wrow,wcol,0.5)
             for i in range(extractedWM.shape[0]):
                 for j in range(extractedWM.shape[1]):
                     extractedWM[i,j] *= 255
@@ -162,8 +172,8 @@ if __name__ == "__main__":
 
             # Some dilation and erosion make the image more clear, comment out to see the original
             invertedWM = 255 - realWm
-            kernel = np.ones((2,2),np.uint8)
-            erosionWM = cv2.erode(invertedWM,kernel,iterations = 2)
+            kernel = np.ones((4,4),np.uint8)
+            erosionWM = cv2.erode(invertedWM,kernel,iterations = 1)
             kernel3 = np.ones((3,3),np.uint8)
             kernel3[0][0] = 0
             kernel3[2][0] = 0
@@ -173,7 +183,8 @@ if __name__ == "__main__":
             realWm = 255 - dilation
 
             cv2.imshow("ExtractedWm",realWm.astype(np.uint8))
-            cv2.imwrite("ExtractedWatermark.jpg", realWm.astype(np.uint8))
+            cv2.imwrite(resultPath + "ExtractedWatermark.jpg", realWm.astype(np.uint8))
+            print("PRESS ENTER TO PROCEED")
             cv2.waitKey(0)
             cv2.destroyAllWindows()
         else:
