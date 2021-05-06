@@ -31,7 +31,7 @@
   - Left Original, right Compressed
 
     <figure class="half">
-        <img src="lena.jpg" style="zoom:50%;" /><img src="DecompressedImage.jpg" style="zoom:50%;" />
+        <img src="lena.jpg" style="zoom:40%;" /><img src="DecompressedImage.jpg" style="zoom:40%;" />
     </figure>
 
 - Results of watermarking extracted from the compressed image. (14 pts)![](D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\Results\Q1\ExtractedWatermark.jpg)
@@ -46,7 +46,11 @@
   - I think the pre-defined version is better
 
     <figure class="half">
-        <img src="hw2_files/Q2/girl.jpeg" style="zoom:50%;" /><img src="hw2_files/Q2/man.jpg" style="zoom:50%;" /><img src="Results/Q2/RegisterationResult_m.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_m.jpg" style="zoom:50%;" /><img src="Results/Q2/RegisterationResult_p.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_p.jpg" style="zoom:50%;" />
+        <img src="hw2_files/Q2/girl.jpeg" style="zoom:50%;" /><img src="hw2_files/Q2/man.jpg" style="zoom:50%;" />
+    </figure>
+
+    <figure class="half">
+        <img src="Results/Q2/RegisterationResult_m.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_m.jpg" style="zoom:50%;" /><img src="Results/Q2/RegisterationResult_p.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_p.jpg" style="zoom:50%;" />
     </figure>
 
 - **Poisson-Based Image Blending**
@@ -55,81 +59,58 @@
       <img src="Results/Q2/SetPosition.jpg" style="zoom:7%;" /><img src="Results/Q2/NonBlended.jpg" style="zoom:7%;" /><img src="Results/Q2/PossionBlending.jpg" style="zoom:7%;" />
   </figure>
 
+
+
 #### Question 3 Image Deblurring
 
 - How do you implement your algorithm? Describe it by flow charts or words. (6 pts)
 
-  - Explain transformation steps:
+  - I first transform the image into **square shape** using resize function, then do FFT and some post process to get a picture with clear stripes.
+  - Estimate $\theta$ with **Hough transform**, and estimate $L$ with the projected plot of the rotated stripe figure (stripes perpendicular to horizontal line)
+  - Reconstruct the blur matrix by `fspecial('motion',L,theta)`, then use **weiner** or **CLS** filter to deblur the image
 
-    - lαβ space's axes has rare correlations, thus transforming in lαβ space is safer than in RGB space
-    - First transformation transform the RGB color space to LMS color space using specified matrices
-    - The second transformation is to take the log values of LMS color space and transform it to lαβ space using specified matrices
-    - Then the color correction:
-      - First extract the "special" parts of the **source** image (doing this by subtracting each color axes in lαβ by each mean value in **source**), so that the shapes in **source** is reserved.
-      - Transform each color axes in lαβ by timing the ratio of lαβ of **target** and lαβ of **source**. By doing this, the "special" parts of **source** has been transformed into the style of **target**
-      - Add the mean value in **target** of lαβ axes to each color axis, at this time the new picture will contains the "special" parts of **source** and the color style of **target**
-    - Then use the inverse specified matrix operation to revert to LMS, then RGB space to recover the new image in RGB space.
+- Describe implement details of your code. (6 pts)
 
-  - Coding implementation
+  - For **DetectMotionParameters**:
 
-    - For RGB transform lαβ space:
+    - As described above, I did **FFT** for the **squared image** and get the clear stripes image following these steps:
+      - First do $fft\_image_{(i,j)}=15*log(abs(fft\_image_{(i,j)}))$
+      - Then **binarize** the image, use **morph** to close up disconnected short lines and cut out connected lines that are not supposed to be connected.
+      - Use **edge detection** to check for the stripes we need
+      - Use **Hough** transform to find lines' $\theta$ = 180 - hough_theta
+      - Rotate the image by $\theta$ to get the stripes perpendicular to horizontal, then project it to get the plot, and estimate $L=N/d$ with the highest hill.<img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\project.png" style="zoom:50%;" />
+  - For **Weiner Filter**:
+    - In a word, the Weiner filter follows the following calculation in frequency domain<img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\weiner.png" style="zoom: 67%;" /> 
+    - where $\frac{1}{SNR(f)}$ is $\frac{noise\ constant}{VAR(blurred \ image)}$, $H(f)$ is the estimated blur matrix in frequency domain
+    - $\hat{X}(f) = G(f) * Y(f)$, where $Y(f)$ is the blurred image in frequency domain, and $\hat{X}(f)$ is the recovered image in frequency domain, recover $\hat{x}(f)$ by using **abs(IFFT)**
+  - For **Constraint Least Square Filter**:
+    - In a word, the Weiner filter follows the following calculation in frequency domain<img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\CLS.png" style="zoom: 67%;" /> 
+    - where $P = \left[ \matrix{ 0& -1& 0\\   -1& 4& -1\\  0& -1& 0} \right]$, $H$ is the estimated blur matrix in frequency.
+    - $\hat{F}$ is the recovered image in frequency domain, recover $\hat{f}$ by using **IFFT**
 
-      - Step 1: initialize the following matrices
+- The parameters L and theta that you get from each figure.(3*2pts)
 
-      - $$
-        rgb2xyz = \left[ \matrix{ 0.5141 & 0.3239 & 0.1604\\   0.2651 & 0.6702 & 0.0641\\  0.0241 & 0.1288 & 0.8444  } \right] \\
-        xyz2lms = \left[ \matrix{ 0.3897 & 0.6890 & -0.0787\\  -0.2298 & 1.1834 & 0.0464\\  0.0000 & 0.0000 & 1.0000  } \right]\\
-        lms2lab \_1 = \left[ \matrix{ \frac{1}{\sqrt{3}} & 0 & 0\\  0 & \frac{1}{\sqrt{6}} & 0\\  0 & 0 & \frac{1}{\sqrt{2}} } \right]\\
-        lms2lab \_2 = \left[ \matrix{ 1 & 1 & 1\\  1 & 1 & -2\\  1 & -1 & 0  } \right]\\
-        $$
+  - The first $L = 20.75,\theta = 258$ <img src="c1.png" style="zoom: 60%;" />
+  - The second $L = 21.5094,\theta = 214$ <img src="c2.png" style="zoom:60%;" />
+  - The third $L = 40,\theta = 124$ <img src="c3.png" style="zoom:60%;" />
 
-      - Step 2: Iterate through all the 1*3 RGB vectors at each position of the picture. Calculate the vector **temp** = xyz2lms * (rgb2xyz * rgb), and if one of the vector **temp** is 0, assign 0 to that dimension rather than assign it with log10(**temp(s)**)
+- Your selected filtering method and the recovered images, as well as the Structural Similarity (SSIM) of the restored image and the original image . (3*4pts)
 
-    - For  Color Correction:
+  - For picture 1, I select Constrained Least Square method since it over-performs the Weiner filter (first CLS, second Weiner, original on the left, recovered on the right)
 
-      - The inputs are: **input**, **reference**, and they are both lαβ space matrices, and **input** indicates **source**, **reference** indicates **target**
-      - Step 1: First calculate the mean and deviation of three channels (l, α, β) for **input** and **reference**, mark them as L_bar, A_bar, B_bar, L_sdev, A_sdev, B_sdev; L_tbar, A_tbar, B_tbar, L_tdev, A_tdev, B_tdev
-      - Step 2: For each layer of lαβ, calculate each positions' value **correction(row,col,lαβ)** = (L_tdev/L_sdev) .* (lαβ(i,j) - L_bar) + L_tbar;
-      - Step 3: After the loop, return the **correction** as output.
+    <figure class="half">
+        <img src="c1.png" style="zoom:50%;" /><img src="w1.png" style="zoom:50%;" />
+    </figure>
 
-    - For lαβ transform RGB space:
+  - For picture 2, I select Constrained Least Square method since it over-performs the Weiner filter (first CLS, second Weiner,original on the left, recovered on the right)
 
-      - Step 1: initialize the following matrices
+    <figure class="half">
+        <img src="c2.png" style="zoom:50%;" /><img src="w2.png" style="zoom:50%;" />
+    </figure>
 
-      - $$
-        lms2rgb = \left[ \matrix{ 4.4679 & -3.5873 & 0.1193\\   -1.2186 & 2.3809 & -0.1624\\  0.0497 & -0.2439 & 1.2045  } \right] \\
-        lms2lab \_1 = \left[ \matrix{ \frac{1}{\sqrt{3}} & 0 & 0\\  0 & \frac{1}{\sqrt{6}} & 0\\  0 & 0 & \frac{1}{\sqrt{2}} } \right]\\
-        lms2lab \_2 = \left[ \matrix{ 1 & 1 & 1\\  1 & 1 & -2\\  1 & -1 & 0  } \right]\\
-        $$
+  - For picture 3, I select Constrained Least Square method since it over-performs the Weiner filter (first CLS, second Weiner,original on the left, recovered on the right)
 
-      - Step 2: Iterate through all the 1*3 lαβ vectors at each position of the picture. Calculate the vector rgb(row, col, RGB) = lms2rgb * 10^(lms2lab_2 * lms2lab_1 * lαβ(row, col, lαβ)) for all positions and get the result of RGB picture matrix
-
-- The improvements you made to the algorithm. (3 pts)
-
-  - There is a small modification in dealing with **temp** being 0, in the documentation, the hint suggested to add a small value to 0s in input RGB vectors, but it will cause some errors in the picture, causing some place to have purple dots. A better way is to judge after calculation, that is to say, to check after doing **temp** = xyz2lms * (rgb2xyz * rgb), assign 0 directly rather than doing logarithm calculation, it can avoid errors of infinity and make the pictures looks better. (Transfer result)
-  - The color transfer result seems satisfying, not too bright or dark
-
-- LAB color space image (like Fig 9). (2*2 pts)
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\Rgb2lab_Result.png)
-
-- Component image of LAB (like Fig 10). (2*2 pts)
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\lab_Result.png)
-
-- Result of your color transformation (like Fig 11). (2*2 pts)
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\ColorTransformation_Result.png)
-
-- Result of your color transformation (like Fig 12). (2*2 pts)
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\ColorTransTwo_Result.png)
-
-- Your selected images and color transfer results (4 pts). 
-
-  - ![](D:\Rigin_Rain\Classes\CS270\hws\hw1\ColorTransSelf_Result.png)
-  - Explanation
-    - As we can see, the pictures (**source**) all changes to the color style of the other picture (**target**)
-    - The **source** and **target** are all transformed to lαβ color space because there are barely correlation between the axes. Thus it is safer to do transform between two pictures and then revert **transformed source** back to RGB color space.
-    - The main Idea is to find out the trait of the **source** picture and the color axes' value ratio between two pictures. The trait will leave the picture hold its shapes in place, and the ratio will adjust the **source** picture's color towards **target**. Thus the pictures(**source**) can transform to similar color style of other pictures(**target**).
+    <figure class="half">
+        <img src="c3.png" style="zoom:50%;" /><img src="w3.png" style="zoom:50%;" />
+    </figure>
 
