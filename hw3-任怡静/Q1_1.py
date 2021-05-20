@@ -1,12 +1,12 @@
+import maxflow
 import cv2
 import numpy as np
-import maxflow
 
 drawing = False
-mode = 0
+mode = 1
 
 default = 0.5
-MAXIMUM = 1000000000
+MAXIMUM = 114514
 
 foreground = 1
 background = 0
@@ -48,19 +48,16 @@ def CreateGraph(col, fore_seeds, back_seeds):
     nodes = []
     edges = []
     graph = np.ones((row, col)) * default
-    for coord in back_seeds:
-        graph[coord[1] - 1, coord[0] - 1] = 0
-    for coord in fore_seeds:
-        graph[coord[1] - 1, coord[0] - 1] = 1
+    for x,y in back_seeds:
+        graph[y - 1, x - 1] = 0
+    for x,y in fore_seeds:
+        graph[y - 1, x - 1] = 1
     
     for (y,x),value in np.ndenumerate(graph):
-        if value == 0.0:
-                nodes.append((GetFlattenCoord(x, y, col), MAXIMUM, 0))
-
-            # this is a foreground node
-        elif value == 1.0:
+        if value == 1.0:
             nodes.append((GetFlattenCoord(x, y, col), 0, MAXIMUM))
-
+        elif value == 0.0:
+                nodes.append((GetFlattenCoord(x, y, col), MAXIMUM, 0))
         else:
             nodes.append((GetFlattenCoord(x, y, col), 0, 0))
 
@@ -83,7 +80,7 @@ def Get2DCoord(index, num_col):
     return (index % num_col), (index // num_col)
 
 def CutGraph(row, col, nodes, edges):
-    segment_overlay = np.zeros((row, col, 3))
+    segment_mask = np.zeros((row, col, 3))
     g = maxflow.Graph[float](len(nodes), len(edges))
     nodelist = g.add_nodes(len(nodes))
 
@@ -98,11 +95,18 @@ def CutGraph(row, col, nodes, edges):
     for index in range(len(nodes)):
         if g.get_segment(index) == 1:
             x,y = Get2DCoord(index, col)
-            segment_overlay[y, x] = (0, 0, 255)
-    return segment_overlay
+            segment_mask[y, x] = (0, 0, 255)
+    return segment_mask
+def ImageResize(img, ratio):
+    row = img.shape[0]
+    col = img.shape[1]
+    ret = cv2.resize(img,(int(col*ratio),int(row*ratio)))
+    return ret
 
 if __name__ == "__main__":
-    image = cv2.imread('images/q1_1.jpeg')
+    image = cv2.imread('images/q1_2.jpeg')
+    ratio = 0.3
+    image = ImageResize(image, ratio)
     showboard = image.copy()
     row, col, _ = image.shape
 
@@ -114,7 +118,7 @@ if __name__ == "__main__":
     mouse_param = [foreground_seeds,background_seeds,row,col]
 
     cv2.namedWindow('image')
-    cv2.setMouseCallback('image',AddSeed,mouse_param)
+    cv2.setMouseCallback('image',AddSeed, mouse_param)
 
     while(1):
         cv2.imshow('image',image)
@@ -128,7 +132,6 @@ if __name__ == "__main__":
             break
     nds, eds = CreateGraph(col,foreground_seeds,background_seeds)
     ovlay = CutGraph(row, col, nds, eds)
-    cv2.imshow("a",showboard)
     result = cv2.addWeighted(np.uint8(showboard), 0.5, np.uint8(ovlay), 0.5, 0.1)
 
     cv2.imshow("aha", result)
