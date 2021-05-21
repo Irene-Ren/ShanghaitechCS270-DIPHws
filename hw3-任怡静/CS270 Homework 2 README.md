@@ -1,4 +1,4 @@
-### CS270 Homework 2 README
+### CS270 Homework 3 README
 
 任怡静 2018533144
 
@@ -6,46 +6,36 @@
 
 - **Environment**: Python 3.7 in Anaconda
 - **Packages**: 
-  - **OpenCv**, install by using `pip install opencv-contrib-python`
-  - **Collections**: install by using `pip install collection`
-  - **Scipy**: install by using `pip install scipy`
+  - **OpenCv (4.5.1.48)**, install by using `pip install opencv-contrib-python`
+  - **Maxflow (1.2.13)**: install by using `pip install PyMaxflow`
+  - **Numpy**: install by using `pip install numpy`
 - **Execution and Operations**
-  - **For Question 1.1, which is to compress lena.tiff and show the codewords and compressed image, do the following: **
-    - Run code `python Q1_1.py "..\material\hw2_files\Q1\lena.tiff" "..\result\Q1\"`
-      - The program will first pop out the original picture of lena.tiff, press **Enter** on keyboard to proceed the compression process, and the compressed and recovered image will appear, press **Enter** to close two pictures and see the compression ratios and other output information in the console. 
+  - **For Question 1.1 the binary partition: **
+    - Run code `python Q1_1.py "..\material\images\q1_2.jpeg" "..\result\Q1\"`, if there are errors,check if the filepath in the file consistent with the system and file structure, change them manually.
+      - The program will pop out the 1/3* size (the image is too large for screen, the result will be recovered to original size before saving) of the original image as the seed collecting drawboard, **press 'o' on keyboard for selection of foreground, press 'b' for selection of background**, once mode selected, drag on image to sketch the seeds. 
       - The program will output 3 files:
-        - **code.txt**: the compressed image stored in bytes
-        - **code_binary.txt**: the compressed image stored in bits
-        - **DecompressedImage.tiff**: the recovered image from compressed codewords
-  - **For Question 1.2, which is to add the watermark LOGO_CS270.mat to lena.tiff and compress the image, later extract watermark from compressed picture, do the following: **
-    - Run code `python Q1_2.py -e "..\material\hw2_files\Q1\lena.tiff" "..\material\hw2_files\Q1\LOGO_CS270.mat" "..\result\Q1\"  `
-      - The program will first pop out the original mat of the watermark, press **Enter** on keyboard to proceed the Encryption process, the Origin image and Encrypted image will appear successively when pressing **Enter**. Press **Enter** to end the encryption process.
-      - The program will output 1 file:
-        -  **EncrypetedImage.tiff**: the encrypted image with watermark
-    - Run code `python Q1_1.py "..\result\Q1\EncryptedImage.tiff" "..\result\Q1\e-"` for the compression, the image is `e-DecompressedImage.tiff`
-    - Run code `python Q1_2.py -d "..\material\hw2_files\Q1\lena.tiff" "..\result\Q1\e-DecompressedImage.tiff" "..\result\Q1\"     `
-      - The program will pop out the extracted watermark
-      - The program will output 1 file:
-        - **ExtractedWatermark.jpg**: the extracted watermark
+        - **SeedsOverlayed.jpeg**: the record of your seed sketch on the original image
+        - **Mask.jpeg**: the mask of foreground and background, foreground in red and background in black
+        - **PartitionOverlayed.jpeg**: the overlay of the original image and the mask
+  - **For Question 1.2 the multi-region partition: **
+    - Run code `python Q1_2.py "..\material\images\q1_1.jpeg" "..\result\Q1\"`, if there are errors,check if the filepath in the file consistent with the system and file structure, change them manually.
+      - The program will pop out the 2* size (for better drawing accuracy, the result will be recovered to original size before saving) of the original image as the seed collecting drawboard, **press '1' to '4' on keyboard for selection of different regions**, once mode selected, drag on image to sketch the seeds. 
+      - The program will output 3 files:
+        - **Multi_SeedsOverlayed.jpeg**: the record of your seed sketch on the original image
+        - **Multi_Masks.jpeg**: the mask of each region, dark blue for region **'1'**, greenish-blue for region **'2'**, green for region **'3'**, and yellow for region **'4'** (for color harmony the colors are different from the overlay masks' colors)
+        - **Multi_PartitionsOverlayed.jpeg**: the overlay of the original image and the masks
 
 #### Question 2
 
-- There are two sets of results in the result folder, the default one is the pre-defined matrix method
 - **Environment**: Python 3.7 Anaconda
 - **Packages**: 
-  - **OpenCv**, install by using `pip install opencv-contrib-python`
-  - **Scipy**: install by using `pip install scipy`
+  - **OpenCv (4.5.1.48)**, install by using `pip install opencv-contrib-python`
+  - **Numpy**: install by using `pip install numpy`
 - **Executions and operations**
-  - **For question 2.1**
-    - Run code `python Q2_1.py`, if there are errors,check if the filepath in the file consistent with the system and file structure, change them manually.
-    - If want to see the result of code matching picture, uncomment line 82 - line 86 and comment line 89, also remember to change line 106's name to `RegisterationResult_m.jpg` and line 135 's name to `BlendedImage_m.jpg`
-  - **For question 2.2**
-    - Run code `python Q2_2.py "..\material\hw2_files\Q2\target.jpeg" "..\material\hw2_files\Q2\source_background.JPG" "..\material\hw2_files\Q2\mask.jpg" "..\result\Q2\"`
-    - If there is an error, check if the filepath in the file consistent with the system and file structure
-
-#### Question 3
-
-- Open `Q3.mlx` in the `code` folder
-- Start the code to see the result on the right
-- **Make sure the file path is correct**
+  - Run code `python Q2.py`, if there are errors,check if the filepath in the file consistent with the system and file structure, change them manually.
+    - The program will pop out the original image, press **Enter** to continue. Then the program will output the **illustrations of large canals and small canals** that has green and red marks to canals (this will not be saved, just for visual understanding), at this time the actual $I_b$ will be shown. Press **Enter** to close the two illustrations and get the two actual $I_l$ and $I_s$ along with the $I_b$ in last step, press **Enter** to close the rest images and get the element-wised summation $\sum_{i\in {I_\epsilon}}I_{\epsilon}(i)$ in the console
+    - The program will output 3 files:
+      - **Background.jpeg**: the extracted background image, the canal places are black
+      - **Large.jpeg**: the extracted large canals along with background image, the small canal places are black
+      - **Small.jpeg**: the extracted small canals along with background image, the large canal places are black
 
