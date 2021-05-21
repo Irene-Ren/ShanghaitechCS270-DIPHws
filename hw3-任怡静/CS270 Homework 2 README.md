@@ -32,7 +32,7 @@
   - **OpenCv (4.5.1.48)**, install by using `pip install opencv-contrib-python`
   - **Numpy**: install by using `pip install numpy`
 - **Executions and operations**
-  - Run code `python Q2.py`, if there are errors,check if the filepath in the file consistent with the system and file structure, change them manually.
+  - Run code `python Q2.py "..\material\images\q2.jpeg" "..\result\Q2\"`, if there are errors,check if the filepath in the file consistent with the system and file structure, change them manually.
     - The program will pop out the original image, press **Enter** to continue. Then the program will output the **illustrations of large canals and small canals** that has green and red marks to canals (this will not be saved, just for visual understanding), at this time the actual $I_b$ will be shown. Press **Enter** to close the two illustrations and get the two actual $I_l$ and $I_s$ along with the $I_b$ in last step, press **Enter** to close the rest images and get the element-wised summation $\sum_{i\in {I_\epsilon}}I_{\epsilon}(i)$ in the console
     - The program will output 3 files:
       - **Background.jpeg**: the extracted background image, the canal places are black
