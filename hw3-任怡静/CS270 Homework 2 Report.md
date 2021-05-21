@@ -1,49 +1,44 @@
-### CS270 Homework 2 Report
+### CS270 Homework 3 Report
 
 任怡静 2018533144
 
-#### Question 1 Image Compression and Watermarking
+#### Question 1: Graph Cut for Image Segmentation (50 points)
 
-- How do you implement your algorithm? Describe it by flow charts or words. (6 pts)
-  - **Truncated Huffman Compression**
-    - For Picture -> Code encryption (**Compression**): 
-      - First I cut the image into $8*8$ blocks, do **DCT** operation on each block, divide it by the **Y_TABLE** provided, flatten them in **zig-zag** fashion and **cut out** all the zeros in the tail (that is to say if a zigzag array is: [40 0 2 3 0 1 0 0 0 0 ...], I only keep the [40 0 2 3 0 1] part)
-      - Then I **collect all the symbols** in the truncated zigzagged arrays mentioned above, and also add an **'EOF'** (in program is 'E') symbol at each end of the arrays. Count all symbols' probabilities, and **construct Huffman dictionary** from these probabilities.
-      - Encode the codes in this fashion:
-        - **DC_CODES**: Extract the first element in each zigzagged array (The DC values), and transfer them into **8-bit binary form**
-        - **AC_CODES**: Connected the rest in zigzagged array by translating each value in the array to the Huffman binary code, and add the 'E' 's Huffman binary code at each end of an array, connect all pieces together
-        - Connect the above two pieces as: **DC_CODES** + **AC_CODES**
-    - For Code -> Picture decryption (**Display**) :
-      - First cut out the $[0:8 * 64 * 64]$ part of the binary code and decode them by cutting each 8 of them and transfer them into **decimal numbers**, fill them in the **first place** in a 1D array.
-      - Then decode the rest consulting to the Huffman code dictionary, also fill them in the 1D array
-      - Fill in array with zeros in the back **until the array has size 64**, then de-Zigzag it and put them in place.
-      - Time each de-zigzagged block with **Y_TABLE**, apply **IDCT** operation to them, and combine the blocks into restored image.
-  - **Image Watermarking**
-    - For encrypting watermark to image:
-      - The encrypting process is quite similar to the image compression process until truncating zigzagged arrays. I also cut the picture into $8*8$ blocks, do **DCT**, divide by Y_TABLE
-      - And then I check for non-zero AC values in the **qDCT** blocks (the blocks that did **DCT** and divided by **Y_TABLE**), replace the value $q_k$ at that position by  $q_{k(i,j,s,t)} = q_{k(i,j,s,t)} * (1 + \alpha * w_k)$, find $k$ values then stop ($k$ is the length of the flatten size of watermark)
-      - Rebuild the picture by timing the Y_TABLE, apply **IDCT** operation and combine them.
-      - For better result, I **cut out the white spaces** in LOGO_CS270.mat making it smaller, then restore it by **filling 255** in the cut areas.
-      - Also for better result, I did some **erosions and dilations** to the extracted image.
+- Please describe your algorithms in words or flowcharts. (15’)
+  - **The Seed Collecting**
+    - This part used the OpenCv built-in functions to catch mouse operations to append coordinates to seed lists ( **foreground_seeds** and **background_seeds **) and illustrate seeds on image
+    - The image size is adjusted for drawboards so that user can draw accurately
+  - **The Cut Graph Algorithm**
+    - I first calculate a graph from seeds obtained in the previous step, which assign 0 to background_seeds' corresponding coordinates in **graph**, 1 to foreground_seeds' and 0.5 for the rest.
+    - Then according to the **graph**, I can construct the node list and edge list for **maxflow graph**. I append **node** (node_flatcoord, capacity_towards_source, capacity_towards_sink) into the **nodeList**, and **edge** (curr_index, neighbor_index, capacity) into the **edgeList**. It follows the rule that if the point in the **graph** is 1 then I append (node_flatcoord, 0, MAXIMUM), 0 append (node_flatcoord, MAXIMUM, 0) and (node_flatcoord, 0, 0)  to the rest. I calculate and append two edges into **edgeList** for each points in the **graph**, whose capacity using $\frac{1}{1+Euclidean(I(x,y), I(x+1,y))}$ and $\frac{1}{1+Euclidean(I(x,y), I(x,y+1))}$
+    - Then I use built-in maxflow package to construct the graph **g** that first connect all nodes to source and sink, then for nodes which has edges to each other (have edge in **edgeList**) add edges between them. And do the maxflow() algorithm.
+    - Then I obtain the mask that the foreground is valued 1 and background 0, so that I can generate the mask and overlays based on **g**.get_segment(index)
+  - **The multi-segments division**
+    - I reuse the cut graph algorithm. And to divide multiple parts, I create 4 lists to collect four kinds of seeds, select one to be the foreground and others combined to be the background, loop this procedure for all four lists as they all become once the foreground. Then I check the mask before filling in color to see if it is occupied by other colors before and only fill in the non-occupied parts.
+    - I modified the GUI to fit for four kinds of seeds by pressing '1', '2', '3', '4' in the keyboard
 
-- Results requested in Task (1). (14 pts) 
+- As shown in figure 1 you need to perform graph cut method to segment the foreground and background of the given image q1_1.jpeg. (15’)
 
-  - Left Original, right Compressed
+  - First original image, second seed record image, third mask image, fourth mask-origin overlayed image
 
     <figure class="half">
-        <img src="lena.jpg" style="zoom:40%;" /><img src="DecompressedImage.jpg" style="zoom:40%;" />
+        <img src="hw3_任怡静_2018533144\material\images\q1_2.jpeg" style="zoom:12%;" /><img src="hw3_任怡静_2018533144\result\Q1\SeedsOverlayed.jpeg" style="zoom:12%;" /><img src="hw3_任怡静_2018533144\result\Q1\Mask.jpeg" style="zoom:12%;" /><img src="hw3_任怡静_2018533144\result\Q1\PartitionOverlayed.jpeg" style="zoom:12%;" />
     </figure>
 
-- Results of watermarking extracted from the compressed image. (14 pts)![](D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\Results\Q1\ExtractedWatermark.jpg)
+- Modify your graph cut program for multi-class segmentation. You need to segment the given image q1_2.jpeg to four parts, and show the segmentation results via transparent painting overlayed with the origin image as shown in Figure 2. (20’)
+
+  - First original image, second seed record image, third masks image, fourth masks-origin overlayed image
+
+    <figure class="half">
+        <img src="hw3_任怡静_2018533144\material\images\q1_1.jpeg" style="zoom:100%;" /><img src="hw3_任怡静_2018533144\result\Q1\Multi_SeedsOverlayed.jpeg" style="zoom:100%;" /><img src="hw3_任怡静_2018533144\result\Q1\Multi_Masks.jpg" style="zoom:100%;" /><img src="hw3_任怡静_2018533144\result\Q1\Multi_PartitionsOverlayed.jpg" style="zoom:100%;" />
+    </figure>
 
 
 #### Question 2 Image Blending
 
-- **Pyramid-Based Image Blending** 
+- Overall illustration of the process you designed. (5')
 
-  - There are two versions of registrations, one is by reading two .mat feature files that contains man's and girl's feature and use code to match them, it performs well in blending chins. Another one uses a pre-defined matrix to do the transform, which do better in mouths and skins.
-
-  - I think the pre-defined version is better
+  - 
 
     <figure class="half">
         <img src="hw2_files/Q2/girl.jpeg" style="zoom:50%;" /><img src="hw2_files/Q2/man.jpg" style="zoom:50%;" />
@@ -53,64 +48,8 @@
         <img src="Results/Q2/RegisterationResult_m.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_m.jpg" style="zoom:50%;" /><img src="Results/Q2/RegisterationResult_p.jpg" style="zoom:50%;" /><img src="Results/Q2/BlendedImage_p.jpg" style="zoom:50%;" />
     </figure>
 
-- **Poisson-Based Image Blending**
 
   <figure class="half">
       <img src="Results/Q2/SetPosition.jpg" style="zoom:7%;" /><img src="Results/Q2/NonBlended.jpg" style="zoom:7%;" /><img src="Results/Q2/PossionBlending.jpg" style="zoom:7%;" />
   </figure>
-
-
-
-#### Question 3 Image Deblurring
-
-- How do you implement your algorithm? Describe it by flow charts or words. (6 pts)
-
-  - I first transform the image into **square shape** using resize function, then do FFT and some post process to get a picture with clear stripes.
-  - Estimate $\theta$ with **Hough transform**, and estimate $L$ with the projected plot of the rotated stripe figure (stripes perpendicular to horizontal line)
-  - Reconstruct the blur matrix by `fspecial('motion',L,theta)`, then use **weiner** or **CLS** filter to deblur the image
-
-- Describe implement details of your code. (6 pts)
-
-  - For **DetectMotionParameters**:
-
-    - As described above, I did **FFT** for the **squared image** and get the clear stripes image following these steps:
-      - First do $fft\_image_{(i,j)}=15*log(abs(fft\_image_{(i,j)}))$
-      - Then **binarize** the image, use **morph** to close up disconnected short lines and cut out connected lines that are not supposed to be connected.
-      - Use **edge detection** to check for the stripes we need
-      - Use **Hough** transform to find lines' $\theta$ = 180 - hough_theta
-      - Rotate the image by $\theta$ to get the stripes perpendicular to horizontal, then project it to get the plot, and estimate $L=N/d$ with the highest hill.<img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\project.png" style="zoom:50%;" />
-  - For **Weiner Filter**:
-    - In a word, the Weiner filter follows the following calculation in frequency domain<img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\weiner.png" style="zoom: 67%;" /> 
-    - where $\frac{1}{SNR(f)}$ is $\frac{noise\ constant}{VAR(blurred \ image)}$, $H(f)$ is the estimated blur matrix in frequency domain
-    - $\hat{X}(f) = G(f) * Y(f)$, where $Y(f)$ is the blurred image in frequency domain, and $\hat{X}(f)$ is the recovered image in frequency domain, recover $\hat{x}(f)$ by using **abs(IFFT)**
-  - For **Constraint Least Square Filter**:
-    - In a word, the Weiner filter follows the following calculation in frequency domain<img src="D:\Rigin_Rain\Classes\CS270\ShanghaitechCS270-DIPHws\hw2-任怡静\CLS.png" style="zoom: 67%;" /> 
-    - where $P = \left[ \matrix{ 0& -1& 0\\   -1& 4& -1\\  0& -1& 0} \right]$, $H$ is the estimated blur matrix in frequency.
-    - $\hat{F}$ is the recovered image in frequency domain, recover $\hat{f}$ by using **IFFT**
-
-- The parameters L and theta that you get from each figure.(3*2pts)
-
-  - The first $L = 20.75,\theta = 258$ <img src="c1.png" style="zoom: 60%;" />
-  - The second $L = 21.5094,\theta = 214$ <img src="c2.png" style="zoom:60%;" />
-  - The third $L = 40,\theta = 124$ <img src="c3.png" style="zoom:60%;" />
-
-- Your selected filtering method and the recovered images, as well as the Structural Similarity (SSIM) of the restored image and the original image . (3*4pts)
-
-  - For picture 1, I select Constrained Least Square method since it over-performs the Weiner filter (first CLS, second Weiner, original on the left, recovered on the right)
-
-    <figure class="half">
-        <img src="c1.png" style="zoom:50%;" /><img src="w1.png" style="zoom:50%;" />
-    </figure>
-
-  - For picture 2, I select Constrained Least Square method since it over-performs the Weiner filter (first CLS, second Weiner,original on the left, recovered on the right)
-
-    <figure class="half">
-        <img src="c2.png" style="zoom:50%;" /><img src="w2.png" style="zoom:50%;" />
-    </figure>
-
-  - For picture 3, I select Constrained Least Square method since it over-performs the Weiner filter (first CLS, second Weiner,original on the left, recovered on the right)
-
-    <figure class="half">
-        <img src="c3.png" style="zoom:50%;" /><img src="w3.png" style="zoom:50%;" />
-    </figure>
 

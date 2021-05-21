@@ -26,12 +26,12 @@ def AddSeed(event, x,y,flags,param):
         if drawing == True:
             if mode == 1:
                 if not ListContain((x,y),param[0]):
-                    if(x >=0 and x < col) and (y>=0 and y<row):
+                    if(x >0 and x < col) and (y>0 and y<row):
                         param[0].append((x, y))
                     cv2.circle(image,(x,y),1,(0,255,0),-1)
             else:
                 if not ListContain((x,y),param[1]):
-                    if(x >=0 and x < col) and (y>=0 and y<row):
+                    if(x >0 and x < col) and (y>0 and y<row):
                         param[1].append((x, y))
                     cv2.circle(image,(x,y),1,(0,0,255),-1)
 
@@ -58,7 +58,7 @@ def CreateGraph(col, fore_seeds, back_seeds):
         if value == 1.0:
             nodes.append((GetFlattenCoord(x, y, col), 0, MAXIMUM))
         elif value == 0.0:
-                nodes.append((GetFlattenCoord(x, y, col), MAXIMUM, 0))
+            nodes.append((GetFlattenCoord(x, y, col), MAXIMUM, 0))
         else:
             nodes.append((GetFlattenCoord(x, y, col), 0, 0))
 
